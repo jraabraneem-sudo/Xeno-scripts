@@ -1,0 +1,937 @@
+-- ==========================================
+-- UILib - Professional UI Library for Delta Hack
+-- Version: 1.0.0
+-- ==========================================
+
+local UILib = {}
+UILib.Version = "1.0.0"
+UILib.Platform = "Delta Hack"
+
+-- ==========================================
+-- CONFIGURATION
+-- ==========================================
+
+UILib.Config = {
+    Theme = "Dark",
+    AnimationSpeed = 0.3,
+    NotificationDuration = 3,
+    DefaultFont = "Arial",
+    WindowOpacity = 0.95
+}
+
+-- ==========================================
+-- UTILITIES
+-- ==========================================
+
+local function generateID()
+    return "UI_" .. tostring(math.random(100000, 999999))
+end
+
+local function clamp(value, min, max)
+    return math.max(min, math.min(max, value))
+end
+
+-- ==========================================
+-- NOTIFICATION SYSTEM
+-- ==========================================
+
+UILib.Notifications = {
+    Queue = {},
+    MaxNotifications = 5,
+    NotificationTypes = {
+        SUCCESS = "success",
+        WARNING = "warning",
+        ERROR = "error",
+        INFO = "info"
+    }
+}
+
+function UILib.Notifications:show(message, notificationType, duration)
+    notificationType = notificationType or self.NotificationTypes.INFO
+    duration = duration or UILib.Config.NotificationDuration
+    
+    -- Remove oldest if max reached
+    if #self.Queue >= self.MaxNotifications then
+        table.remove(self.Queue, 1)
+    end
+    
+    local notification = {
+        ID = generateID(),
+        Message = message,
+        Type = notificationType,
+        Duration = duration,
+        CreatedAt = os.time(),
+        Visible = true,
+        Position = #self.Queue + 1
+    }
+    
+    table.insert(self.Queue, notification)
+    
+    -- Auto-hide after duration
+    task.delay(duration, function()
+        self:remove(notification.ID)
+    end)
+    
+    return notification
+end
+
+function UILib.Notifications:remove(notificationID)
+    for i, notif in ipairs(self.Queue) do
+        if notif.ID == notificationID then
+            table.remove(self.Queue, i)
+            return true
+        end
+    end
+    return false
+end
+
+function UILib.Notifications:clear()
+    self.Queue = {}
+end
+
+function UILib.Notifications:getAll()
+    return self.Queue
+end
+
+-- ==========================================
+-- BUTTON COMPONENT
+-- ==========================================
+
+UILib.Button = {}
+UILib.Button.__index = UILib.Button
+
+function UILib.Button.new(text, callback)
+    local self = setmetatable({}, UILib.Button)
+    self.ID = generateID()
+    self.Text = text
+    self.Callback = callback or function() end
+    self.Enabled = true
+    self.Visible = true
+    self.Hovered = false
+    self.Clicked = false
+    
+    self.Style = {
+        BackgroundColor = {r = 50, g = 50, b = 50},
+        HoverColor = {r = 70, g = 70, b = 70},
+        ClickColor = {r = 40, g = 40, b = 40},
+        TextColor = {r = 255, g = 255, b = 255},
+        BorderColor = {r = 80, g = 80, b = 80},
+        CornerRadius = 8,
+        Padding = 10,
+        Height = 40,
+        Width = 150,
+        TextSize = 14
+    }
+    
+    return self
+end
+
+function UILib.Button:click()
+    if self.Enabled then
+        self.Clicked = true
+        self:Callback()
+        task.delay(0.1, function() self.Clicked = false end)
+        return true
+    end
+    return false
+end
+
+function UILib.Button:setEnabled(enabled)
+    self.Enabled = enabled
+    return self
+end
+
+function UILib.Button:setText(text)
+    self.Text = text
+    return self
+end
+
+function UILib.Button:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.Button:setCallback(callback)
+    self.Callback = callback
+    return self
+end
+
+-- ==========================================
+-- SLIDER COMPONENT
+-- ==========================================
+
+UILib.Slider = {}
+UILib.Slider.__index = UILib.Slider
+
+function UILib.Slider.new(min, max, default)
+    local self = setmetatable({}, UILib.Slider)
+    self.ID = generateID()
+    self.MinValue = min or 0
+    self.MaxValue = max or 100
+    self.Value = default or min
+    self.Dragging = false
+    self.OnValueChanged = function() end
+    
+    self.Style = {
+        BackgroundColor = {r = 40, g = 40, b = 40},
+        ForegroundColor = {r = 100, g = 200, b = 255},
+        ThumbColor = {r = 100, g = 200, b = 255},
+        Height = 6,
+        Width = 200,
+        ThumbSize = 12,
+        CornerRadius = 3
+    }
+    
+    return self
+end
+
+function UILib.Slider:setValue(value)
+    self.Value = clamp(value, self.MinValue, self.MaxValue)
+    self:OnValueChanged(self.Value)
+    return self
+end
+
+function UILib.Slider:getValue()
+    return self.Value
+end
+
+function UILib.Slider:getPercentage()
+    return ((self.Value - self.MinValue) / (self.MaxValue - self.MinValue)) * 100
+end
+
+function UILib.Slider:setRange(min, max)
+    self.MinValue = min
+    self.MaxValue = max
+    self:setValue(self.Value)
+    return self
+end
+
+function UILib.Slider:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.Slider:onValueChanged(callback)
+    self.OnValueChanged = callback
+    return self
+end
+
+-- ==========================================
+-- TOGGLE COMPONENT
+-- ==========================================
+
+UILib.Toggle = {}
+UILib.Toggle.__index = UILib.Toggle
+
+function UILib.Toggle.new(label, default)
+    local self = setmetatable({}, UILib.Toggle)
+    self.ID = generateID()
+    self.Label = label
+    self.State = default or false
+    self.OnStateChanged = function() end
+    
+    self.Style = {
+        OnColor = {r = 76, g = 175, b = 80},
+        OffColor = {r = 100, g = 100, b = 100},
+        ToggleColor = {r = 255, g = 255, b = 255},
+        Size = 24,
+        TextColor = {r = 255, g = 255, b = 255},
+        TextSize = 14
+    }
+    
+    return self
+end
+
+function UILib.Toggle:toggle()
+    self.State = not self.State
+    self:OnStateChanged(self.State)
+    return self.State
+end
+
+function UILib.Toggle:setState(state)
+    self.State = state
+    self:OnStateChanged(self.State)
+    return self
+end
+
+function UILib.Toggle:getState()
+    return self.State
+end
+
+function UILib.Toggle:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.Toggle:onStateChanged(callback)
+    self.OnStateChanged = callback
+    return self
+end
+
+-- ==========================================
+-- PARAGRAPH COMPONENT
+-- ==========================================
+
+UILib.Paragraph = {}
+UILib.Paragraph.__index = UILib.Paragraph
+
+function UILib.Paragraph.new(content)
+    local self = setmetatable({}, UILib.Paragraph)
+    self.ID = generateID()
+    self.Content = content or ""
+    self.Visible = true
+    
+    self.Style = {
+        TextColor = {r = 200, g = 200, b = 200},
+        BackgroundColor = {r = 30, g = 30, b = 30},
+        TextSize = 14,
+        Font = "Arial",
+        Padding = 10,
+        LineHeight = 1.5
+    }
+    
+    return self
+end
+
+function UILib.Paragraph:setText(content)
+    self.Content = content
+    return self
+end
+
+function UILib.Paragraph:getText()
+    return self.Content
+end
+
+function UILib.Paragraph:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.Paragraph:append(text)
+    self.Content = self.Content .. text
+    return self
+end
+
+function UILib.Paragraph:clear()
+    self.Content = ""
+    return self
+end
+
+-- ==========================================
+-- INPUT FIELD COMPONENT
+-- ==========================================
+
+UILib.InputField = {}
+UILib.InputField.__index = UILib.InputField
+
+function UILib.InputField.new(placeholder)
+    local self = setmetatable({}, UILib.InputField)
+    self.ID = generateID()
+    self.Placeholder = placeholder or "Enter text..."
+    self.Value = ""
+    self.Focused = false
+    self.OnValueChanged = function() end
+    self.OnFocused = function() end
+    
+    self.Style = {
+        BackgroundColor = {r = 40, g = 40, b = 40},
+        FocusedColor = {r = 50, g = 50, b = 50},
+        TextColor = {r = 255, g = 255, b = 255},
+        PlaceholderColor = {r = 150, g = 150, b = 150},
+        BorderColor = {r = 80, g = 80, b = 80},
+        Height = 32,
+        Width = 250,
+        Padding = 8,
+        TextSize = 14
+    }
+    
+    self.MaxLength = 100
+    
+    return self
+end
+
+function UILib.InputField:setText(text)
+    if #text <= self.MaxLength then
+        self.Value = text
+        self:OnValueChanged(text)
+        return true
+    end
+    return false
+end
+
+function UILib.InputField:getText()
+    return self.Value
+end
+
+function UILib.InputField:clear()
+    self.Value = ""
+    self:OnValueChanged("")
+    return self
+end
+
+function UILib.InputField:focus()
+    self.Focused = true
+    self:OnFocused(true)
+    return self
+end
+
+function UILib.InputField:unfocus()
+    self.Focused = false
+    self:OnFocused(false)
+    return self
+end
+
+function UILib.InputField:setMaxLength(length)
+    self.MaxLength = length
+    return self
+end
+
+function UILib.InputField:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.InputField:onValueChanged(callback)
+    self.OnValueChanged = callback
+    return self
+end
+
+-- ==========================================
+-- CHECKBOX COMPONENT
+-- ==========================================
+
+UILib.Checkbox = {}
+UILib.Checkbox.__index = UILib.Checkbox
+
+function UILib.Checkbox.new(label, default)
+    local self = setmetatable({}, UILib.Checkbox)
+    self.ID = generateID()
+    self.Label = label
+    self.Checked = default or false
+    self.OnChecked = function() end
+    
+    self.Style = {
+        CheckedColor = {r = 100, g = 200, b = 255},
+        UncheckedColor = {r = 70, g = 70, b = 70},
+        CheckMarkColor = {r = 255, g = 255, b = 255},
+        Size = 20,
+        TextColor = {r = 255, g = 255, b = 255},
+        TextSize = 14
+    }
+    
+    return self
+end
+
+function UILib.Checkbox:toggle()
+    self.Checked = not self.Checked
+    self:OnChecked(self.Checked)
+    return self.Checked
+end
+
+function UILib.Checkbox:setChecked(checked)
+    self.Checked = checked
+    self:OnChecked(self.Checked)
+    return self
+end
+
+function UILib.Checkbox:isChecked()
+    return self.Checked
+end
+
+function UILib.Checkbox:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.Checkbox:onChecked(callback)
+    self.OnChecked = callback
+    return self
+end
+
+-- ==========================================
+-- DROPDOWN COMPONENT
+-- ==========================================
+
+UILib.Dropdown = {}
+UILib.Dropdown.__index = UILib.Dropdown
+
+function UILib.Dropdown.new(options)
+    local self = setmetatable({}, UILib.Dropdown)
+    self.ID = generateID()
+    self.Options = options or {}
+    self.SelectedIndex = 1
+    self.Open = false
+    self.OnSelectionChanged = function() end
+    
+    self.Style = {
+        BackgroundColor = {r = 40, g = 40, b = 40},
+        HoverColor = {r = 60, g = 60, b = 60},
+        TextColor = {r = 255, g = 255, b = 255},
+        BorderColor = {r = 80, g = 80, b = 80},
+        Height = 32,
+        Width = 200,
+        TextSize = 14,
+        CornerRadius = 4
+    }
+    
+    return self
+end
+
+function UILib.Dropdown:addOption(option)
+    table.insert(self.Options, option)
+    return self
+end
+
+function UILib.Dropdown:removeOption(index)
+    if index > 0 and index <= #self.Options then
+        table.remove(self.Options, index)
+        return true
+    end
+    return false
+end
+
+function UILib.Dropdown:selectOption(index)
+    if index > 0 and index <= #self.Options then
+        self.SelectedIndex = index
+        self:OnSelectionChanged(self.Options[index], index)
+        return true
+    end
+    return false
+end
+
+function UILib.Dropdown:getSelectedOption()
+    return self.Options[self.SelectedIndex]
+end
+
+function UILib.Dropdown:getSelectedIndex()
+    return self.SelectedIndex
+end
+
+function UILib.Dropdown:toggle()
+    self.Open = not self.Open
+    return self.Open
+end
+
+function UILib.Dropdown:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.Dropdown:onSelectionChanged(callback)
+    self.OnSelectionChanged = callback
+    return self
+end
+
+-- ==========================================
+-- PROGRESS BAR COMPONENT
+-- ==========================================
+
+UILib.ProgressBar = {}
+UILib.ProgressBar.__index = UILib.ProgressBar
+
+function UILib.ProgressBar.new(min, max)
+    local self = setmetatable({}, UILib.ProgressBar)
+    self.ID = generateID()
+    self.MinValue = min or 0
+    self.MaxValue = max or 100
+    self.Value = min
+    self.ShowPercentage = true
+    
+    self.Style = {
+        BackgroundColor = {r = 40, g = 40, b = 40},
+        ForegroundColor = {r = 76, g = 175, b = 80},
+        TextColor = {r = 255, g = 255, b = 255},
+        Height = 20,
+        Width = 250,
+        CornerRadius = 10,
+        TextSize = 12
+    }
+    
+    return self
+end
+
+function UILib.ProgressBar:setValue(value)
+    self.Value = clamp(value, self.MinValue, self.MaxValue)
+    return self
+end
+
+function UILib.ProgressBar:getValue()
+    return self.Value
+end
+
+function UILib.ProgressBar:getPercentage()
+    local range = self.MaxValue - self.MinValue
+    if range == 0 then return 0 end
+    return ((self.Value - self.MinValue) / range) * 100
+end
+
+function UILib.ProgressBar:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.ProgressBar:increment(amount)
+    self:setValue(self.Value + amount)
+    return self
+end
+
+-- ==========================================
+-- TAB COMPONENT
+-- ==========================================
+
+UILib.Tab = {}
+UILib.Tab.__index = UILib.Tab
+
+function UILib.Tab.new(name)
+    local self = setmetatable({}, UILib.Tab)
+    self.ID = generateID()
+    self.Name = name
+    self.Components = {}
+    self.Active = false
+    self.OnActivated = function() end
+    
+    self.Style = {
+        ActiveColor = {r = 100, g = 200, b = 255},
+        InactiveColor = {r = 70, g = 70, b = 70},
+        TextColor = {r = 255, g = 255, b = 255},
+        Height = 40,
+        TextSize = 14
+    }
+    
+    return self
+end
+
+function UILib.Tab:addComponent(component)
+    table.insert(self.Components, component)
+    return self
+end
+
+function UILib.Tab:removeComponent(componentID)
+    for i, comp in ipairs(self.Components) do
+        if comp.ID == componentID then
+            table.remove(self.Components, i)
+            return true
+        end
+    end
+    return false
+end
+
+function UILib.Tab:getComponents()
+    return self.Components
+end
+
+function UILib.Tab:activate()
+    self.Active = true
+    self:OnActivated()
+    return self
+end
+
+function UILib.Tab:deactivate()
+    self.Active = false
+    return self
+end
+
+function UILib.Tab:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+-- ==========================================
+-- TABS CONTAINER
+-- ==========================================
+
+UILib.TabsContainer = {}
+UILib.TabsContainer.__index = UILib.TabsContainer
+
+function UILib.TabsContainer.new()
+    local self = setmetatable({}, UILib.TabsContainer)
+    self.ID = generateID()
+    self.Tabs = {}
+    self.ActiveTabID = nil
+    
+    self.Style = {
+        BackgroundColor = {r = 20, g = 20, b = 20},
+        TabBarColor = {r = 30, g = 30, b = 30},
+        BorderColor = {r = 50, g = 50, b = 50}
+    }
+    
+    return self
+end
+
+function UILib.TabsContainer:addTab(name)
+    local tab = UILib.Tab.new(name)
+    table.insert(self.Tabs, tab)
+    
+    if self.ActiveTabID == nil then
+        self:switchTab(tab.ID)
+    end
+    
+    return tab
+end
+
+function UILib.TabsContainer:removeTab(tabID)
+    for i, tab in ipairs(self.Tabs) do
+        if tab.ID == tabID then
+            table.remove(self.Tabs, i)
+            return true
+        end
+    end
+    return false
+end
+
+function UILib.TabsContainer:switchTab(tabID)
+    for _, tab in ipairs(self.Tabs) do
+        tab:deactivate()
+    end
+    
+    for _, tab in ipairs(self.Tabs) do
+        if tab.ID == tabID then
+            tab:activate()
+            self.ActiveTabID = tabID
+            return tab
+        end
+    end
+    
+    return nil
+end
+
+function UILib.TabsContainer:getActiveTab()
+    for _, tab in ipairs(self.Tabs) do
+        if tab.ID == self.ActiveTabID then
+            return tab
+        end
+    end
+    return nil
+end
+
+function UILib.TabsContainer:getTabs()
+    return self.Tabs
+end
+
+function UILib.TabsContainer:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+-- ==========================================
+-- WINDOW COMPONENT
+-- ==========================================
+
+UILib.Window = {}
+UILib.Window.__index = UILib.Window
+
+function UILib.Window.new(title)
+    local self = setmetatable({}, UILib.Window)
+    self.ID = generateID()
+    self.Title = title or "Window"
+    self.Visible = true
+    self.Minimized = false
+    self.Dragging = false
+    self.Components = {}
+    self.TabsContainer = UILib.TabsContainer.new()
+    
+    self.OnClose = function() end
+    self.OnMinimize = function() end
+    self.OnMaximize = function() end
+    
+    self.Style = {
+        BackgroundColor = {r = 20, g = 20, b = 20},
+        TitleBarColor = {r = 30, g = 30, b = 30},
+        TextColor = {r = 255, g = 255, b = 255},
+        BorderColor = {r = 50, g = 50, b = 50},
+        Width = 450,
+        Height = 600,
+        CornerRadius = 10,
+        Draggable = true,
+        Resizable = true,
+        ShowMinimize = true,
+        ShowClose = true,
+        TitleBarHeight = 35,
+        TextSize = 16,
+        Opacity = 0.95
+    }
+    
+    return self
+end
+
+function UILib.Window:addComponent(component)
+    table.insert(self.Components, component)
+    return self
+end
+
+function UILib.Window:removeComponent(componentID)
+    for i, comp in ipairs(self.Components) do
+        if comp.ID == componentID then
+            table.remove(self.Components, i)
+            return true
+        end
+    end
+    return false
+end
+
+function UILib.Window:getComponents()
+    return self.Components
+end
+
+function UILib.Window:addTab(name)
+    return self.TabsContainer:addTab(name)
+end
+
+function UILib.Window:switchTab(tabID)
+    return self.TabsContainer:switchTab(tabID)
+end
+
+function UILib.Window:minimize()
+    if not self.Minimized then
+        self.Minimized = true
+        self:OnMinimize()
+    end
+    return self
+end
+
+function UILib.Window:maximize()
+    if self.Minimized then
+        self.Minimized = false
+        self:OnMaximize()
+    end
+    return self
+end
+
+function UILib.Window:toggleMinimize()
+    if self.Minimized then
+        return self:maximize()
+    else
+        return self:minimize()
+    end
+end
+
+function UILib.Window:close()
+    self.Visible = false
+    self:OnClose()
+    return self
+end
+
+function UILib.Window:open()
+    self.Visible = true
+    return self
+end
+
+function UILib.Window:setTitle(title)
+    self.Title = title
+    return self
+end
+
+function UILib.Window:setSize(width, height)
+    self.Style.Width = width
+    self.Style.Height = height
+    return self
+end
+
+function UILib.Window:getSize()
+    return self.Style.Width, self.Style.Height
+end
+
+function UILib.Window:setStyle(styleTable)
+    for key, value in pairs(styleTable) do
+        self.Style[key] = value
+    end
+    return self
+end
+
+function UILib.Window:onClose(callback)
+    self.OnClose = callback
+    return self
+end
+
+function UILib.Window:onMinimize(callback)
+    self.OnMinimize = callback
+    return self
+end
+
+function UILib.Window:onMaximize(callback)
+    self.OnMaximize = callback
+    return self
+end
+
+-- ==========================================
+-- FACTORY FUNCTIONS
+-- ==========================================
+
+function UILib.createButton(text, callback)
+    return UILib.Button.new(text, callback)
+end
+
+function UILib.createSlider(min, max, default)
+    return UILib.Slider.new(min, max, default)
+end
+
+function UILib.createToggle(label, default)
+    return UILib.Toggle.new(label, default)
+end
+
+function UILib.createCheckbox(label, default)
+    return UILib.Checkbox.new(label, default)
+end
+
+function UILib.createParagraph(content)
+    return UILib.Paragraph.new(content)
+end
+
+function UILib.createInputField(placeholder)
+    return UILib.InputField.new(placeholder)
+end
+
+function UILib.createDropdown(options)
+    return UILib.Dropdown.new(options)
+end
+
+function UILib.createProgressBar(min, max)
+    return UILib.ProgressBar.new(min, max)
+end
+
+function UILib.createWindow(title)
+    return UILib.Window.new(title)
+end
+
+function UILib.createTabsContainer()
+    return UILib.TabsContainer.new()
+end
+
+-- ==========================================
+-- CONFIGURATION FUNCTIONS
+-- ==========================================
+
+function UILib.setConfig(key, value)
+    UILib.Config[key] = value
+    return true
+end
+
+function UILib.getConfig(key)
+    return UILib.Config[key]
+end
+
+-- ==========================================
+-- EXPORT
+-- ==========================================
+
+return UILib
