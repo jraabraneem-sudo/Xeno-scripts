@@ -1,0 +1,783 @@
+-- ==========================================
+-- UILib - Compact UI Library for Delta Hack
+-- Version: 2.1.0 - Optimized & Auto-Load
+-- ==========================================
+
+local UILib = {}
+UILib.Version = "2.1.0"
+
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- ==========================================
+-- QUICK SETUP
+-- ==========================================
+
+local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "UILib"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = playerGui
+
+UILib.ScreenGui = ScreenGui
+UILib.Notifications = {Queue = {}}
+
+-- ==========================================
+-- HELPER FUNCTIONS
+-- ==========================================
+
+local function ID()
+    return "UI_" .. math.random(100000, 999999)
+end
+
+local function clamp(v, min, max)
+    return math.max(min, math.min(max, v))
+end
+
+local function frame(parent, name, color, size, pos)
+    local f = Instance.new("Frame")
+    f.Name = name
+    f.BackgroundColor3 = color
+    f.Size = size or UDim2.new(1, 0, 1, 0)
+    f.Position = pos or UDim2.new(0, 0, 0, 0)
+    f.BorderSizePixel = 0
+    f.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = f
+    return f
+end
+
+local function label(parent, text, size, color, bg, trans)
+    local l = Instance.new("TextLabel")
+    l.Text = text
+    l.TextSize = size or 13
+    l.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+    l.BackgroundColor3 = bg or Color3.fromRGB(20, 20, 20)
+    l.BackgroundTransparency = trans or 0
+    l.BorderSizePixel = 0
+    l.Font = Enum.Font.GothamMedium
+    l.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = l
+    return l
+end
+
+-- ==========================================
+-- NOTIFICATIONS
+-- ==========================================
+
+UILib.Notifications.init = function(self)
+    if self.Container then return end
+    self.Container = frame(ScreenGui, "NotifContainer", Color3.fromRGB(0,0,0), 
+        UDim2.new(0, 350, 0, 300), UDim2.new(1, -370, 0, 10))
+    self.Container.BackgroundTransparency = 1
+end
+
+function UILib.Notifications:show(msg, typ, dur)
+    self:init()
+    typ = typ or "info"
+    dur = dur or 3
+    
+    local colors = {
+        success = Color3.fromRGB(76, 175, 80),
+        error = Color3.fromRGB(244, 67, 54),
+        warning = Color3.fromRGB(255, 152, 0),
+        info = Color3.fromRGB(33, 150, 243)
+    }
+    
+    local nf = frame(self.Container, "Notif_" .. ID(), Color3.fromRGB(30,30,30), 
+        UDim2.new(1, -10, 0, 55), UDim2.new(0, 5, 0, #self.Queue * 60))
+    
+    local bar = frame(nf, "Bar", colors[typ] or Color3.fromRGB(100,200,255), 
+        UDim2.new(0, 4, 1, 0), UDim2.new(0, 0, 0, 0))
+    bar.BorderSizePixel = 0
+    
+    local lbl = label(nf, msg, 12, Color3.fromRGB(255,255,255), Color3.fromRGB(30,30,30), 1)
+    lbl.Size = UDim2.new(1, -20, 1, 0)
+    lbl.Position = UDim2.new(0, 12, 0, 0)
+    lbl.TextWrapped = true
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    
+    table.insert(self.Queue, nf)
+    
+    task.delay(dur, function()
+        if nf.Parent then nf:Destroy() end
+        table.remove(self.Queue, 1)
+    end)
+end
+
+-- ==========================================
+-- BUTTON
+-- ==========================================
+
+UILib.Button = {}
+UILib.Button.__index = UILib.Button
+
+function UILib.Button.new(text, callback)
+    local self = setmetatable({}, UILib.Button)
+    self.ID = ID()
+    self.Frame = frame(nil, "Btn_" .. self.ID, Color3.fromRGB(50,50,50), UDim2.new(0, 130, 0, 32))
+    
+    local btn = Instance.new("TextButton")
+    btn.Text = text
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamMedium
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.Parent = self.Frame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(callback or function() end)
+    
+    btn.MouseEnter:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end)
+    
+    self.Button = btn
+    return self
+end
+
+function UILib.Button:setText(text)
+    self.Button.Text = text
+    return self
+end
+
+-- ==========================================
+-- SLIDER
+-- ==========================================
+
+UILib.Slider = {}
+UILib.Slider.__index = UILib.Slider
+
+function UILib.Slider.new(min, max, default)
+    local self = setmetatable({}, UILib.Slider)
+    self.ID = ID()
+    self.Min = min or 0
+    self.Max = max or 100
+    self.Value = default or min
+    self.OnChanged = function() end
+    
+    self.Frame = frame(nil, "Slider_" .. self.ID, Color3.fromRGB(30,30,30), UDim2.new(0, 200, 0, 45))
+    
+    local bg = frame(self.Frame, "BG", Color3.fromRGB(50,50,50), UDim2.new(1, -20, 0, 5), UDim2.new(0, 10, 0, 15))
+    
+    self.Fill = frame(bg, "Fill", Color3.fromRGB(100,200,255), UDim2.new(0.5, 0, 1, 0))
+    
+    self.Thumb = frame(bg, "Thumb", Color3.fromRGB(100,200,255), UDim2.new(0, 10, 0, 15), UDim2.new(0.5, -5, 0, -5))
+    
+    self.Label = label(self.Frame, "50", 11, Color3.fromRGB(200,200,200), Color3.fromRGB(30,30,30), 1)
+    self.Label.Size = UDim2.new(1, -20, 0, 15)
+    self.Label.Position = UDim2.new(0, 10, 0, 25)
+    
+    self.Thumb.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self.Dragging = true
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self.Dragging = false
+        end
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if self.Dragging then
+            local mouse = game.Players.LocalPlayer:GetMouse()
+            local rel = mouse.X - bg.AbsolutePosition.X
+            local pct = clamp(rel / bg.AbsoluteSize.X, 0, 1)
+            local val = self.Min + (self.Max - self.Min) * pct
+            self:setValue(val)
+        end
+    end)
+    
+    return self
+end
+
+function UILib.Slider:setValue(value)
+    self.Value = clamp(value, self.Min, self.Max)
+    local pct = (self.Value - self.Min) / (self.Max - self.Min)
+    self.Fill.Size = UDim2.new(pct, 0, 1, 0)
+    self.Thumb.Position = UDim2.new(pct, -5, 0, -5)
+    self.Label.Text = tostring(math.floor(self.Value))
+    self:OnChanged(self.Value)
+    return self
+end
+
+function UILib.Slider:getValue()
+    return self.Value
+end
+
+function UILib.Slider:onChanged(callback)
+    self.OnChanged = callback
+    return self
+end
+
+-- ==========================================
+-- TOGGLE
+-- ==========================================
+
+UILib.Toggle = {}
+UILib.Toggle.__index = UILib.Toggle
+
+function UILib.Toggle.new(label, default)
+    local self = setmetatable({}, UILib.Toggle)
+    self.ID = ID()
+    self.State = default or false
+    self.OnChanged = function() end
+    
+    self.Frame = frame(nil, "Toggle_" .. self.ID, Color3.fromRGB(20,20,20), UDim2.new(0, 220, 0, 28))
+    self.Frame.BackgroundTransparency = 1
+    
+    local lbl = label(self.Frame, label, 12, Color3.fromRGB(255,255,255), Color3.fromRGB(20,20,20), 1)
+    lbl.Size = UDim2.new(0, 160, 1, 0)
+    lbl.BackgroundTransparency = 1
+    
+    self.Box = frame(self.Frame, "Box", self.State and Color3.fromRGB(76,175,80) or Color3.fromRGB(100,100,100), 
+        UDim2.new(0, 45, 0, 20), UDim2.new(1, -50, 0.5, -10))
+    
+    self.Toggle = frame(self.Box, "Toggle", Color3.fromRGB(255,255,255), UDim2.new(0, 18, 0, 18), 
+        self.State and UDim2.new(0, 23, 0, 1) or UDim2.new(0, 1, 0, 1))
+    
+    self.Box.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self:toggle()
+        end
+    end)
+    
+    return self
+end
+
+function UILib.Toggle:toggle()
+    self.State = not self.State
+    self.Box.BackgroundColor3 = self.State and Color3.fromRGB(76,175,80) or Color3.fromRGB(100,100,100)
+    
+    TweenService:Create(self.Toggle, TweenInfo.new(0.15), {
+        Position = self.State and UDim2.new(0, 23, 0, 1) or UDim2.new(0, 1, 0, 1)
+    }):Play()
+    
+    self:OnChanged(self.State)
+    return self.State
+end
+
+function UILib.Toggle:getState()
+    return self.State
+end
+
+function UILib.Toggle:onChanged(callback)
+    self.OnChanged = callback
+    return self
+end
+
+-- ==========================================
+-- CHECKBOX
+-- ==========================================
+
+UILib.Checkbox = {}
+UILib.Checkbox.__index = UILib.Checkbox
+
+function UILib.Checkbox.new(label, default)
+    local self = setmetatable({}, UILib.Checkbox)
+    self.ID = ID()
+    self.Checked = default or false
+    self.OnChanged = function() end
+    
+    self.Frame = frame(nil, "Checkbox_" .. self.ID, Color3.fromRGB(20,20,20), UDim2.new(0, 220, 0, 24))
+    self.Frame.BackgroundTransparency = 1
+    
+    self.Box = frame(self.Frame, "Box", self.Checked and Color3.fromRGB(100,200,255) or Color3.fromRGB(70,70,70), 
+        UDim2.new(0, 16, 0, 16), UDim2.new(0, 0, 0.5, -8))
+    
+    if self.Checked then
+        local chk = label(self.Box, "✓", 14, Color3.fromRGB(255,255,255), Color3.fromRGB(100,200,255), 1)
+        chk.Size = UDim2.new(1, 0, 1, 0)
+    end
+    
+    local lbl = label(self.Frame, label, 12, Color3.fromRGB(255,255,255), Color3.fromRGB(20,20,20), 1)
+    lbl.Size = UDim2.new(1, -26, 1, 0)
+    lbl.Position = UDim2.new(0, 22, 0, 0)
+    
+    self.Box.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self:toggle()
+        end
+    end)
+    
+    return self
+end
+
+function UILib.Checkbox:toggle()
+    self.Checked = not self.Checked
+    self.Box.BackgroundColor3 = self.Checked and Color3.fromRGB(100,200,255) or Color3.fromRGB(70,70,70)
+    
+    local chk = self.Box:FindFirstChild("✓")
+    if self.Checked and not chk then
+        local check = label(self.Box, "✓", 14, Color3.fromRGB(255,255,255), Color3.fromRGB(100,200,255), 1)
+        check.Size = UDim2.new(1, 0, 1, 0)
+    elseif not self.Checked and chk then
+        chk:Destroy()
+    end
+    
+    self:OnChanged(self.Checked)
+    return self.Checked
+end
+
+function UILib.Checkbox:isChecked()
+    return self.Checked
+end
+
+function UILib.Checkbox:onChanged(callback)
+    self.OnChanged = callback
+    return self
+end
+
+-- ==========================================
+-- PARAGRAPH
+-- ==========================================
+
+UILib.Paragraph = {}
+UILib.Paragraph.__index = UILib.Paragraph
+
+function UILib.Paragraph.new(text)
+    local self = setmetatable({}, UILib.Paragraph)
+    self.ID = ID()
+    
+    self.Frame = frame(nil, "Para_" .. self.ID, Color3.fromRGB(20,20,20), UDim2.new(1, 0, 0, 40))
+    self.Frame.BackgroundTransparency = 1
+    
+    self.Label = label(self.Frame, text, 12, Color3.fromRGB(200,200,200), Color3.fromRGB(20,20,20), 1)
+    self.Label.Size = UDim2.new(1, 0, 1, 0)
+    self.Label.TextWrapped = true
+    self.Label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    return self
+end
+
+function UILib.Paragraph:setText(text)
+    self.Label.Text = text
+    return self
+end
+
+function UILib.Paragraph:getText()
+    return self.Label.Text
+end
+
+function UILib.Paragraph:append(text)
+    self.Label.Text = self.Label.Text .. text
+    return self
+end
+
+-- ==========================================
+-- INPUT FIELD
+-- ==========================================
+
+UILib.InputField = {}
+UILib.InputField.__index = UILib.InputField
+
+function UILib.InputField.new(placeholder)
+    local self = setmetatable({}, UILib.InputField)
+    self.ID = ID()
+    
+    self.Frame = frame(nil, "Input_" .. self.ID, Color3.fromRGB(40,40,40), UDim2.new(0, 200, 0, 30))
+    
+    self.TextBox = Instance.new("TextBox")
+    self.TextBox.PlaceholderText = placeholder or "Enter text..."
+    self.TextBox.TextSize = 12
+    self.TextBox.TextColor3 = Color3.fromRGB(255,255,255)
+    self.TextBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    self.TextBox.BorderSizePixel = 0
+    self.TextBox.Font = Enum.Font.GothamMedium
+    self.TextBox.Size = UDim2.new(1, 0, 1, 0)
+    self.TextBox.Parent = self.Frame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = self.TextBox
+    
+    return self
+end
+
+function UILib.InputField:getText()
+    return self.TextBox.Text
+end
+
+function UILib.InputField:setText(text)
+    self.TextBox.Text = text
+    return self
+end
+
+function UILib.InputField:clear()
+    self.TextBox.Text = ""
+    return self
+end
+
+-- ==========================================
+-- DROPDOWN
+-- ==========================================
+
+UILib.Dropdown = {}
+UILib.Dropdown.__index = UILib.Dropdown
+
+function UILib.Dropdown.new(options)
+    local self = setmetatable({}, UILib.Dropdown)
+    self.ID = ID()
+    self.Options = options or {}
+    self.Selected = 1
+    self.Open = false
+    self.OnChanged = function() end
+    
+    self.Frame = frame(nil, "Dropdown_" .. self.ID, Color3.fromRGB(40,40,40), UDim2.new(0, 180, 0, 32))
+    
+    self.Button = Instance.new("TextButton")
+    self.Button.Text = self.Options[1] or "Select..."
+    self.Button.TextSize = 12
+    self.Button.TextColor3 = Color3.fromRGB(255,255,255)
+    self.Button.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    self.Button.BorderSizePixel = 0
+    self.Button.Font = Enum.Font.GothamMedium
+    self.Button.Size = UDim2.new(1, 0, 1, 0)
+    self.Button.Parent = self.Frame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = self.Button
+    
+    self.List = frame(nil, "List_" .. self.ID, Color3.fromRGB(40,40,40), 
+        UDim2.new(0, 180, 0, #self.Options * 28))
+    self.List.Position = UDim2.new(0, 0, 0, 35)
+    
+    self:updateList()
+    
+    self.Button.MouseButton1Click:Connect(function()
+        self:toggle()
+    end)
+    
+    return self
+end
+
+function UILib.Dropdown:updateList()
+    for _, child in ipairs(self.List:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    
+    for i, opt in ipairs(self.Options) do
+        local btn = Instance.new("TextButton")
+        btn.Text = opt
+        btn.TextSize = 11
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.BackgroundColor3 = i == self.Selected and Color3.fromRGB(100,200,255) or Color3.fromRGB(40,40,40)
+        btn.BorderSizePixel = 0
+        btn.Font = Enum.Font.GothamMedium
+        btn.Size = UDim2.new(1, 0, 0, 28)
+        btn.Position = UDim2.new(0, 0, 0, (i-1) * 28)
+        btn.Parent = self.List
+        
+        btn.MouseButton1Click:Connect(function()
+            self.Selected = i
+            self.Button.Text = opt
+            self:toggle()
+            self:OnChanged(opt, i)
+        end)
+    end
+end
+
+function UILib.Dropdown:addOption(option)
+    table.insert(self.Options, option)
+    self.List.Size = UDim2.new(0, 180, 0, #self.Options * 28)
+    self:updateList()
+    return self
+end
+
+function UILib.Dropdown:toggle()
+    self.Open = not self.Open
+    self.List.Parent = self.Open and self.Frame.Parent or nil
+    return self.Open
+end
+
+function UILib.Dropdown:onChanged(callback)
+    self.OnChanged = callback
+    return self
+end
+
+-- ==========================================
+-- PROGRESS BAR
+-- ==========================================
+
+UILib.ProgressBar = {}
+UILib.ProgressBar.__index = UILib.ProgressBar
+
+function UILib.ProgressBar.new(min, max)
+    local self = setmetatable({}, UILib.ProgressBar)
+    self.ID = ID()
+    self.Min = min or 0
+    self.Max = max or 100
+    self.Value = min
+    
+    self.Frame = frame(nil, "Progress_" .. self.ID, Color3.fromRGB(40,40,40), UDim2.new(0, 200, 0, 30))
+    
+    self.BG = frame(self.Frame, "BG", Color3.fromRGB(50,50,50), UDim2.new(1, -20, 0, 12), UDim2.new(0, 10, 0, 4))
+    
+    self.Fill = frame(self.BG, "Fill", Color3.fromRGB(76,175,80), UDim2.new(0, 0, 1, 0))
+    
+    self.Label = label(self.Frame, "0%", 11, Color3.fromRGB(255,255,255), Color3.fromRGB(40,40,40), 1)
+    self.Label.Size = UDim2.new(1, -20, 0, 12)
+    self.Label.Position = UDim2.new(0, 10, 0, 16)
+    
+    return self
+end
+
+function UILib.ProgressBar:setValue(value)
+    self.Value = clamp(value, self.Min, self.Max)
+    local pct = (self.Value - self.Min) / (self.Max - self.Min)
+    self.Fill.Size = UDim2.new(pct, 0, 1, 0)
+    self.Label.Text = tostring(math.floor(pct * 100)) .. "%"
+    return self
+end
+
+function UILib.ProgressBar:getValue()
+    return self.Value
+end
+
+-- ==========================================
+-- TAB
+-- ==========================================
+
+UILib.Tab = {}
+UILib.Tab.__index = UILib.Tab
+
+function UILib.Tab.new(name)
+    local self = setmetatable({}, UILib.Tab)
+    self.ID = ID()
+    self.Name = name
+    self.Active = false
+    
+    self.Button = Instance.new("TextButton")
+    self.Button.Text = name
+    self.Button.TextSize = 11
+    self.Button.TextColor3 = Color3.fromRGB(255,255,255)
+    self.Button.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    self.Button.BorderSizePixel = 0
+    self.Button.Font = Enum.Font.GothamMedium
+    
+    self.Content = frame(nil, "Content_" .. self.ID, Color3.fromRGB(20,20,20), UDim2.new(1, 0, 1, -40))
+    self.Content.Position = UDim2.new(0, 0, 0, 40)
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = self.Content
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 12)
+    padding.PaddingRight = UDim.new(0, 12)
+    padding.PaddingTop = UDim.new(0, 12)
+    padding.Parent = self.Content
+    
+    return self
+end
+
+function UILib.Tab:addComponent(comp)
+    if comp.Frame then
+        comp.Frame.Parent = self.Content
+    end
+    return self
+end
+
+function UILib.Tab:activate()
+    self.Active = true
+    self.Button.BackgroundColor3 = Color3.fromRGB(100,200,255)
+    self.Content.Visible = true
+    return self
+end
+
+function UILib.Tab:deactivate()
+    self.Active = false
+    self.Button.BackgroundColor3 = Color3.fromRGB(70,70,70)
+    self.Content.Visible = false
+    return self
+end
+
+-- ==========================================
+-- WINDOW
+-- ==========================================
+
+UILib.Window = {}
+UILib.Window.__index = UILib.Window
+
+function UILib.Window.new(title)
+    local self = setmetatable({}, UILib.Window)
+    self.ID = ID()
+    self.Dragging = false
+    self.Minimized = false
+    
+    self.Frame = frame(ScreenGui, "Window_" .. self.ID, Color3.fromRGB(20,20,20), 
+        UDim2.new(0, 420, 0, 480), UDim2.new(0.5, -210, 0.5, -240))
+    
+    local titleBar = frame(self.Frame, "TitleBar", Color3.fromRGB(30,30,30), UDim2.new(1, 0, 0, 30))
+    titleBar.BorderSizePixel = 0
+    
+    local titleLbl = label(titleBar, title, 13, Color3.fromRGB(255,255,255), Color3.fromRGB(30,30,30), 1)
+    titleLbl.Size = UDim2.new(1, -65, 1, 0)
+    titleLbl.Position = UDim2.new(0, 8, 0, 0)
+    
+    local minBtn = Instance.new("TextButton")
+    minBtn.Text = "_"
+    minBtn.TextSize = 14
+    minBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    minBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    minBtn.BorderSizePixel = 0
+    minBtn.Font = Enum.Font.GothamBold
+    minBtn.Size = UDim2.new(0, 30, 1, 0)
+    minBtn.Position = UDim2.new(1, -65, 0, 0)
+    minBtn.Parent = titleBar
+    
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Text = "✕"
+    closeBtn.TextSize = 12
+    closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Size = UDim2.new(0, 30, 1, 0)
+    closeBtn.Position = UDim2.new(1, -30, 0, 0)
+    closeBtn.Parent = titleBar
+    
+    local content = frame(self.Frame, "Content", Color3.fromRGB(20,20,20), UDim2.new(1, 0, 1, -30), UDim2.new(0, 0, 0, 30))
+    
+    local tabBar = frame(content, "TabBar", Color3.fromRGB(25,25,25), UDim2.new(1, 0, 0, 40))
+    
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.Padding = UDim.new(0, 3)
+    tabLayout.Parent = tabBar
+    
+    self.Tabs = {}
+    
+    minBtn.MouseButton1Click:Connect(function()
+        self.Minimized = not self.Minimized
+        content.Visible = not self.Minimized
+        self.Frame.Size = self.Minimized and UDim2.new(0, 420, 0, 30) or UDim2.new(0, 420, 0, 480)
+    end)
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        self.Frame:Destroy()
+    end)
+    
+    -- Dragging
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self.Dragging = true
+            self.DragStart = game:GetService("UserInputService"):GetMouseLocation()
+            self.PosStart = self.Frame.Position
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self.Dragging = false
+        end
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if self.Dragging then
+            local mouse = game:GetService("UserInputService"):GetMouseLocation()
+            local delta = Vector2.new(mouse.X - self.DragStart.X, mouse.Y - self.DragStart.Y)
+            self.Frame.Position = UDim2.new(
+                self.PosStart.X.Scale, self.PosStart.X.Offset + delta.X,
+                self.PosStart.Y.Scale, self.PosStart.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    self.TabBar = tabBar
+    self.Content = content
+    
+    return self
+end
+
+function UILib.Window:addTab(name)
+    local tab = UILib.Tab.new(name)
+    table.insert(self.Tabs, tab)
+    
+    tab.Button.Size = UDim2.new(0, 90, 1, 0)
+    tab.Button.Parent = self.TabBar
+    
+    tab.Content.Parent = self.Content
+    
+    if #self.Tabs == 1 then
+        self:switchTab(tab.ID)
+    end
+    
+    tab.Button.MouseButton1Click:Connect(function()
+        self:switchTab(tab.ID)
+    end)
+    
+    return tab
+end
+
+function UILib.Window:switchTab(tabID)
+    for _, tab in ipairs(self.Tabs) do
+        tab:deactivate()
+    end
+    
+    for _, tab in ipairs(self.Tabs) do
+        if tab.ID == tabID then
+            tab:activate()
+            return tab
+        end
+    end
+end
+
+-- ==========================================
+-- FACTORY FUNCTIONS
+-- ==========================================
+
+function UILib.createButton(text, callback)
+    return UILib.Button.new(text, callback)
+end
+
+function UILib.createSlider(min, max, default)
+    return UILib.Slider.new(min, max, default)
+end
+
+function UILib.createToggle(label, default)
+    return UILib.Toggle.new(label, default)
+end
+
+function UILib.createCheckbox(label, default)
+    return UILib.Checkbox.new(label, default)
+end
+
+function UILib.createParagraph(text)
+    return UILib.Paragraph.new(text)
+end
+
+function UILib.createInputField(placeholder)
+    return UILib.InputField.new(placeholder)
+end
+
+function UILib.createDropdown(options)
+    return UILib.Dropdown.new(options)
+end
+
+function UILib.createProgressBar(min, max)
+    return UILib.ProgressBar.new(min, max)
+end
+
+function UILib.createWindow(title)
+    return UILib.Window.new(title)
+end
+
+return UILib
