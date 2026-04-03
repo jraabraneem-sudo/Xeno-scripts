@@ -1580,8 +1580,8 @@ function nebrolib:MakeWindow(Configs)
 	local Window, FirstTab = {}, false
 	function Window:CloseBtn()
 		local Dialog = Window:Dialog({
-			Title = "Close",
-			Text = "You Want Close Ui?",
+			Title = "NEBRO HUB",
+			Text = "Do You Want To Close Hub?",
 			Options = {
 				{"Confirm", function()
 					ScreenGui:Destroy()
@@ -1760,18 +1760,19 @@ function nebrolib:MakeWindow(Configs)
 		Make("Stroke", Frame)
 		
 		local ButtonsHolder = Create("Frame", Frame, {
-			Size = UDim2.fromScale(1, 0.35),
-			Position = UDim2.fromScale(0, 1),
-			AnchorPoint = Vector2.new(0, 1),
+			Size = UDim2.new(1, -30, 0, 0),
+			Position = UDim2.fromScale(0.5, 1),
+			AnchorPoint = Vector2.new(0.5, 1),
 			BackgroundColor3 = Theme["Color Hub 2"],
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			ZIndex = 503
+			ZIndex = 503,
+			AutomaticSize = "Y"
 		}, {
 			Create("UIListLayout", {
-				Padding = UDim.new(0, 10),
+				Padding = UDim.new(0, 8),
 				VerticalAlignment = "Center",
-				FillDirection = "Horizontal",
+				FillDirection = "Vertical",
 				HorizontalAlignment = "Center"
 			})
 		})
@@ -1787,7 +1788,7 @@ function nebrolib:MakeWindow(Configs)
 			local Callback = Configs[2] or Configs.Callback or function() end
 			
 			local Button = Make("Button", ButtonsHolder, {
-				Size = UDim2.new(1, 0, 0, 32),
+				Size = UDim2.new(1, 0, 0, 30),
 				ZIndex = 504
 			})
 			Make("Corner", Button)
@@ -1798,7 +1799,8 @@ function nebrolib:MakeWindow(Configs)
 				TextSize = 12,
 				BackgroundColor3 = Theme["Color Stroke"],
 				AutoButtonColor = false,
-				ZIndex = 504
+				ZIndex = 504,
+				Size = UDim2.new(1, 0, 0, 30)
 			})
 			
 			local function RunCallback()
