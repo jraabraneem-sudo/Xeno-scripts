@@ -1,0 +1,1752 @@
+local nebrolib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jraabraneem-sudo/Xeno-scripts/refs/heads/main/Nebro%20Ui%20Lib"))()
+
+local window = nebrolib:MakeWindow({
+    "NEBRO HUB | BLOX FRUITS V1",
+    "by : nebro",
+    "NebroSave.json"
+})
+
+window:AddMiniButton({
+    Text = "",
+    Image = "rbxassetid://83880401916624",
+    Size = 45,
+    Transparency = 0.15,
+    Position = UDim2.fromOffset(20, 220)
+})
+
+local MainTab = window:MakeTab({
+    Title = "Main",
+    Icon = "home"
+})
+
+local PlayerTab = window:MakeTab({
+    Title = "Player",
+    Icon = "user"
+})
+
+local StatsTab = window:MakeTab({
+    Title = "Stats",
+    Icon = "box"
+})
+
+local SeaTab = window:MakeTab({
+    Title = "Sea",
+    Icon = "sea"
+})
+
+local ShopTab = window:MakeTab({
+    Title = "Shop",
+    Icon = "shop"
+})
+
+local EffectsTab = window:MakeTab({
+    Title = "Effects",
+    Icon = "witch"
+})
+
+local TeamTab = window:MakeTab({
+    Title = "Team",
+    Icon = "users"
+})
+
+local RaidTab = window:MakeTab({
+    Title = "Raid",
+    Icon = "kill"
+})
+
+local SettingsTab = window:MakeTab({
+    Title = "Settings",
+    Icon = "settings"
+})
+
+window:SelectTab(MainTab)
+
+MainTab:AddSection("Main")
+
+--[[
+    Ai Edit Exploit Scripts AI - Blox Fruits Ultra Optimized
+    Modified: Kill Aura Attack Speed & Smooth Tween System
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- // Variables
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local Root = Character:WaitForChild("HumanoidRootPart")
+
+-- // State Management
+local AutoFarm = false
+local SelectedWeaponType = "Combat"
+local AttackDelay = 1.0 -- الافتراضي سريع جداً
+local HakiUsed = false
+local CurrentEnemy = nil
+
+-- // Lists
+local FightingStyles = {
+    "Godhuman", "Sanguine Art", "Death Step", "Electric Claw", "Dragon Talon", 
+    "Dragon Claw", "Superhuman", "Sharkman Karate", "Electric", "Black Leg", 
+    "Fishman Karate", "Combat"
+}
+
+local SwordsList = {
+    "Cursed Dual Katana", "Shark Anchor", "Tushita", "Yama", "Canvander", 
+    "Buddy Sword", "Spikey Trident", "Hallow Scythe", "True Triple Katana", 
+    "Saddi", "Shisui", "Wando", "Midnight Blade", "Rengoku", "Saber", 
+    "Bisento", "Trident", "Pipe", "Katana", "Cutlass", "Dual Katana"
+}
+
+-- // Remotes
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+local Net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net")
+local RegisterAttack = Net["RE/RegisterAttack"]
+local RegisterHit = Net["RE/RegisterHit"]
+
+-- // --- Utility Functions ---
+
+-- Session ID for Security
+local function GetSessionID()
+    local success, result = pcall(function()
+        local SendHitsToServer = getrenv()._G.SendHitsToServer
+        local CombatThread = getupvalues(SendHitsToServer)[1]
+        return tostring(Player.UserId):sub(2,4)..tostring(CombatThread):sub(11,15)
+    end)
+    return success and result or "INVALID_SESSION"
+end
+
+-- Auto Haki Logic
+local function ApplyHaki()
+    if AutoFarm and not HakiUsed then
+        pcall(function()
+            CommF:InvokeServer("Buso")
+            HakiUsed = true
+        end)
+    end
+end
+
+-- Smart Weapon Equipping
+local function EquipWeapon()
+    local TargetList = (SelectedWeaponType == "Combat") and FightingStyles or SwordsList
+    for _, weaponName in ipairs(TargetList) do
+        local tool = Player.Backpack:FindFirstChild(weaponName) or Character:FindFirstChild(weaponName)
+        if tool then
+            if tool.Parent ~= Character then
+                Humanoid:EquipTool(tool)
+            end
+            return tool
+        end
+    end
+end
+
+-- Smooth Tween (No High Fly)
+local function SmartTween(targetCFrame)
+    local distance = (Root.Position - targetCFrame.Position).Magnitude
+    if distance < 5 then return end
+
+    -- Noclip Enable
+    for _, v in pairs(Character:GetDescendants()) do
+        if v:IsA("BasePart") then v.CanCollide = false end
+    end
+
+    local tweenInfo = TweenInfo.new(distance / 150, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(Root, tweenInfo, {CFrame = targetCFrame})
+    
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- Fast Attack Loop (Kill Aura Mode)
+task.spawn(function()
+    while true do
+        if AutoFarm and CurrentEnemy and CurrentEnemy:FindFirstChild("Humanoid") and CurrentEnemy.Humanoid.Health > 0 then
+            pcall(function()
+                RegisterAttack:FireServer(0) -- Attack Speed Boost
+                RegisterHit:FireServer(CurrentEnemy.HumanoidRootPart, {}, nil, GetSessionID())
+            end)
+            task.wait(AttackDelay)
+        else
+            task.wait(0.1)
+        end
+    end
+end)
+
+-- Quest Logic
+local function GetQuest()
+    local lvl = Player.Data.Level.Value
+    if lvl >= 1 and lvl <= 9 then return "BanditQuest1","Bandit",1,CFrame.new(1059,15,1550)
+    elseif lvl >= 10 and lvl <= 14 then return "JungleQuest","Monkey",1,CFrame.new(-1598,35,153)
+    elseif lvl >= 15 and lvl <= 29 then return "JungleQuest","Gorilla",2,CFrame.new(-1598,35,153)
+    elseif lvl >= 30 and lvl <= 39 then return "BuggyQuest1","Pirate",1,CFrame.new(-1141,4,3831)
+    elseif lvl >= 40 and lvl <= 59 then return "BuggyQuest1","Brute",2,CFrame.new(-1141,4,3831)
+    elseif lvl >= 60 and lvl <= 74 then return "DesertQuest","Desert Bandit",1,CFrame.new(894,5,4392)
+    elseif lvl >= 75 and lvl <= 89 then return "DesertQuest","Desert Officer",2,CFrame.new(894,5,4392)
+    elseif lvl >= 90 and lvl <= 99 then return "SnowQuest","Snow Bandit",1,CFrame.new(1389,88,-1298)
+    elseif lvl >= 100 and lvl <= 119 then return "SnowQuest","Snowman",2,CFrame.new(1389,88,-1298)
+    elseif lvl >= 120 and lvl <= 149 then return "MarineQuest2","Chief Petty Officer",1,CFrame.new(-5039,27,4324)
+    elseif lvl >= 150 and lvl <= 189 then return "SkyQuest","Sky Bandit",1,CFrame.new(-4839,716,-2619)
+    elseif lvl >= 190 and lvl <= 249 then return "PrisonerQuest","Dangerous Prisoner",2,CFrame.new(5308,1,475)
+    elseif lvl >= 250 and lvl <= 299 then return "ColosseumQuest","Toga Warrior",1,CFrame.new(-1580,6,-2986)
+    elseif lvl >= 300 and lvl <= 374 then return "MagmaQuest","Military Soldier",1,CFrame.new(-5313,10,8515)
+    elseif lvl >= 375 and lvl <= 449 then return "FishmanQuest","Fishman Warrior",1,CFrame.new(61122,18,1569)
+    elseif lvl >= 450 and lvl <= 524 then return "SkyExp1Quest","God's Guard",1,CFrame.new(-4721,843,-1949)
+    elseif lvl >= 525 and lvl <= 649 then return "SkyExp2Quest","Royal Squad",1,CFrame.new(-7906,5634,-1411)
+    elseif lvl >= 650 and lvl <= 699 then return "FountainQuest","Galley Captain",2,CFrame.new(5259,37,4050)
+    elseif lvl >= 700 and lvl <= 774 then return "Area1Quest","Raider",1,CFrame.new(-429,71,1836)
+    elseif lvl >= 775 and lvl <= 874 then return "Area2Quest","Swan Pirate",1,CFrame.new(638,71,918)
+    elseif lvl >= 875 and lvl <= 949 then return "MarineQuest3","Marine Lieutenant",1,CFrame.new(-2440,71,-3216)
+    elseif lvl >= 950 and lvl <= 999 then return "ZombieQuest","Zombie",1,CFrame.new(-5497,47,-795)
+    elseif lvl >= 1000 and lvl <= 1099 then return "SnowMountainQuest","Snow Trooper",1,CFrame.new(609,400,-5372)
+    elseif lvl >= 1100 and lvl <= 1199 then return "IceSideQuest","Lab Subordinate",1,CFrame.new(-6064,15,-4902)
+    elseif lvl >= 1200 and lvl <= 1299 then return "FireSideQuest","Lava Pirate",2,CFrame.new(-5428,15,-5299)
+    elseif lvl >= 1300 and lvl <= 1399 then return "ShipQuest2","Ship Steward",1,CFrame.new(968,125,33244)
+    elseif lvl >= 1400 and lvl <= 1499 then return "ForgottenQuest","Sea Soldier",1,CFrame.new(-3054,235,-10142)
+    elseif lvl >= 1500 and lvl <= 1599 then return "PiratePortQuest","Pirate Millionaire",1,CFrame.new(-290,42,5581)
+    elseif lvl >= 1600 and lvl <= 1699 then return "AmazonQuest","Dragon Crew Warrior",1,CFrame.new(5832,51,-1101)
+    elseif lvl >= 1700 and lvl <= 1799 then return "MarineTreeIsland","Marine Commodore",1,CFrame.new(2180,27,-6741)
+    elseif lvl >= 1800 and lvl <= 1899 then return "DeepForestIsland3","Fishman Captain",2,CFrame.new(-10581,330,-8761)
+    elseif lvl >= 1900 and lvl <= 1999 then return "DeepForestIsland2","Jungle Pirate",1,CFrame.new(-12680,389,-9902)
+    elseif lvl >= 2000 and lvl <= 2099 then return "HauntedQuest1","Living Zombie",2,CFrame.new(-9479,141,5566)
+    elseif lvl >= 2100 and lvl <= 2199 then return "NutsIslandQuest","Peanut President",2,CFrame.new(-2104,38,-10194)
+    elseif lvl >= 2200 and lvl <= 2274 then return "CakeQuest1","Cookie Crafter",1,CFrame.new(-2021,37,-12028)
+    elseif lvl >= 2275 then return "CakeQuest2","Head Baker",2,CFrame.new(-1927,37,-12842)
+    end
+end
+
+-- // --- UI Implementation ---
+
+MainTab:AddToggle({
+    Name = "Auto Farm Level",
+    Default = false,
+    Callback = function(state)
+        AutoFarm = state
+        if state then ApplyHaki() end
+    end
+})
+
+MainTab:AddDropdown({
+    Name = "Weapon Mode",
+    Options = {"Combat", "Sword"},
+    Default = "Combat",
+    Callback = function(selected)
+        SelectedWeaponType = selected
+    end
+})
+
+MainTab:AddDropdown({
+    Name = "Attack Speed",
+    Options = {"0.1", "0.2", "0.3", "0.5", "1.0"},
+    Default = "1.0",
+    Callback = function(val)
+        AttackDelay = tonumber(val)
+    end
+})
+
+-- // --- Main Loops ---
+
+-- Noclip & Position Keeper Loop
+RunService.Stepped:Connect(function()
+    if AutoFarm and CurrentEnemy and CurrentEnemy:FindFirstChild("HumanoidRootPart") then
+        Root.CFrame = CurrentEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 25, 0)
+        Root.Velocity = Vector3.zero
+        -- Noclip
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+task.spawn(function()
+    while task.wait() do
+        if not AutoFarm then 
+            CurrentEnemy = nil
+            continue 
+        end
+        
+        pcall(function()
+            ApplyHaki()
+            EquipWeapon()
+            
+            local qName, eName, qLevel, qPos = GetQuest()
+            
+            if not Player.PlayerGui.Main.Quest.Visible then
+                SmartTween(qPos)
+                CommF:InvokeServer("StartQuest", qName, qLevel)
+            else
+                -- Target Selection
+                local enemy = nil
+                for _, v in pairs(workspace.Enemies:GetChildren()) do
+                    if v.Name == eName and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                        enemy = v
+                        break
+                    end
+                end
+                
+                if enemy then
+                    CurrentEnemy = enemy
+                    repeat task.wait() until not enemy.Parent or enemy.Humanoid.Health <= 0 or not AutoFarm
+                    CurrentEnemy = nil
+                else
+                    SmartTween(qPos)
+                end
+            end
+        end)
+    end
+end)
+
+-- Anti-Afk
+task.spawn(function()
+    local VirtualUser = game:GetService("VirtualUser")
+    Player.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end)
+
+MainTab:AddSection("Boss Farming")
+
+--[[
+    Ai Edit Exploit Scripts AI - Auto Boss Farm + Auto Quest
+    Optimized for Nebrolib | Professional Grade
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- // Variables
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Root = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+local AutoFarmBoss = false
+local SelectedBoss = "None"
+local CurrentSea = 1
+local TargetBossInstance = nil
+
+-- // كشف العالم تلقائياً
+local PlaceID = game.PlaceId
+if PlaceID == 2753915549 then CurrentSea = 1
+elseif PlaceID == 4442272183 then CurrentSea = 2
+elseif PlaceID == 7449423635 then CurrentSea = 3
+end
+
+-- // --- بيانات الزعماء الشاملة (Boss Name, Quest, Levels, Positions) ---
+local BossData = {
+    [1] = { -- First Sea
+        ["The Gorilla King"] = {BossName = "The Gorilla King [Lv. 25] [Boss]", QuestName = "JungleQuest", QuestLevel = 3, Pos = CFrame.new(-1088, 8, -488), QPos = CFrame.new(-1601, 36, 153)},
+        ["Bobby"] = {BossName = "Bobby [Lv. 55] [Boss]", QuestName = "BuggyQuest1", QuestLevel = 3, Pos = CFrame.new(-1087, 46, 4040), QPos = CFrame.new(-1140, 4, 3827)},
+        ["Yeti"] = {BossName = "Yeti [Lv. 110] [Boss]", QuestName = "SnowQuest", QuestLevel = 3, Pos = CFrame.new(1218, 138, -1488), QPos = CFrame.new(1386, 87, -1298)},
+        ["Vice Admiral"] = {BossName = "Vice Admiral [Lv. 130] [Boss]", QuestName = "MarineQuest2", QuestLevel = 2, Pos = CFrame.new(-5006, 88, 4353), QPos = CFrame.new(-5036, 28, 4324)},
+        ["Warden"] = {BossName = "Warden [Lv. 220] [Boss]", QuestName = "ImpelQuest", QuestLevel = 1, Pos = CFrame.new(5278, 2, 944), QPos = CFrame.new(5191, 2, 686)},
+        ["Chief Warden"] = {BossName = "Chief Warden [Lv. 230] [Boss]", QuestName = "ImpelQuest", QuestLevel = 2, Pos = CFrame.new(5206, 0, 814), QPos = CFrame.new(5191, 2, 686)},
+        ["Swan"] = {BossName = "Swan [Lv. 240] [Boss]", QuestName = "ImpelQuest", QuestLevel = 3, Pos = CFrame.new(5325, 7, 719), QPos = CFrame.new(5191, 2, 686)},
+        ["Magma Admiral"] = {BossName = "Magma Admiral [Lv. 350] [Boss]", QuestName = "MagmaQuest", QuestLevel = 3, Pos = CFrame.new(-5765, 82, 8718), QPos = CFrame.new(-5314, 12, 8517)},
+        ["Fishman Lord"] = {BossName = "Fishman Lord [Lv. 425] [Boss]", QuestName = "FishmanQuest", QuestLevel = 3, Pos = CFrame.new(61260, 30, 1193), QPos = CFrame.new(61122, 18, 1569)},
+        ["Wysper"] = {BossName = "Wysper [Lv. 500] [Boss]", QuestName = "SkyExp1Quest", QuestLevel = 3, Pos = CFrame.new(-7866, 5576, -546), QPos = CFrame.new(-7861, 5545, -379)},
+        ["Thunder God"] = {BossName = "Thunder God [Lv. 575] [Boss]", QuestName = "SkyExp2Quest", QuestLevel = 3, Pos = CFrame.new(-7994, 5761, -2088), QPos = CFrame.new(-7903, 5635, -1410)},
+        ["Cyborg"] = {BossName = "Cyborg [Lv. 675] [Boss]", QuestName = "FountainQuest", QuestLevel = 3, Pos = CFrame.new(6094, 73, 3825), QPos = CFrame.new(5258, 38, 4050)},
+    },
+    [2] = { -- Second Sea
+        ["Diamond"] = {BossName = "Diamond [Lv. 750] [Boss]", QuestName = "Area1Quest", QuestLevel = 3, Pos = CFrame.new(-1576, 198, 13), QPos = CFrame.new(-427, 73, 1835)},
+        ["Jeremy"] = {BossName = "Jeremy [Lv. 850] [Boss]", QuestName = "Area2Quest", QuestLevel = 3, Pos = CFrame.new(2006, 448, 853), QPos = CFrame.new(636, 73, 918)},
+        ["Fajita"] = {BossName = "Fajita [Lv. 925] [Boss]", QuestName = "MarineQuest3", QuestLevel = 3, Pos = CFrame.new(-2172, 103, -4015), QPos = CFrame.new(-2441, 73, -3217)},
+        ["Smoke Admiral"] = {BossName = "Smoke Admiral [Lv. 1150] [Boss]", QuestName = "IceSideQuest", QuestLevel = 3, Pos = CFrame.new(-5275, 20, -5260), QPos = CFrame.new(-5429, 15, -5297)},
+        ["Awakened Ice Admiral"] = {BossName = "Awakened Ice Admiral [Lv. 1400] [Boss]", QuestName = "FrostQuest", QuestLevel = 3, Pos = CFrame.new(6403, 340, -6894), QPos = CFrame.new(5668, 28, -6483)},
+        ["Tide Keeper"] = {BossName = "Tide Keeper [Lv. 1475] [Boss]", QuestName = "ForgottenQuest", QuestLevel = 3, Pos = CFrame.new(-3795, 105, -11421), QPos = CFrame.new(-3053, 237, -10145)},
+    },
+    [3] = { -- Third Sea
+        ["Stone"] = {BossName = "Stone [Lv. 1550] [Boss]", QuestName = "PiratePortQuest", QuestLevel = 3, Pos = CFrame.new(-1027, 92, 6578), QPos = CFrame.new(-289, 43, 5579)},
+        ["Island Empress"] = {BossName = "Island Empress [Lv. 1675] [Boss]", QuestName = "AmazonQuest2", QuestLevel = 3, Pos = CFrame.new(5543, 668, 199), QPos = CFrame.new(5445, 601, 751)},
+        ["Kilo Admiral"] = {BossName = "Kilo Admiral [Lv. 1750] [Boss]", QuestName = "MarineTreeIsland", QuestLevel = 3, Pos = CFrame.new(2764, 432, -7144), QPos = CFrame.new(2179, 28, -6739)},
+        ["Captain Elephant"] = {BossName = "Captain Elephant [Lv. 1875] [Boss]", QuestName = "DeepForestIsland", QuestLevel = 3, Pos = CFrame.new(-13376, 433, -8071), QPos = CFrame.new(-13232, 332, -7626)},
+        ["Beautiful Pirate"] = {BossName = "Beautiful Pirate [Lv. 1950] [Boss]", QuestName = "DeepForestIsland2", QuestLevel = 3, Pos = CFrame.new(5283, 22, -110), QPos = CFrame.new(-12682, 390, -9902)},
+        ["Cake Queen"] = {BossName = "Cake Queen [Lv. 2175] [Boss]", QuestName = "IceCreamIslandQuest", QuestLevel = 3, Pos = CFrame.new(-678, 381, -11114), QPos = CFrame.new(-819, 64, -10967)},
+    }
+}
+
+-- // --- Utility Functions ---
+
+local function SmartTween(targetCF)
+    if not Root then return end
+    local dist = (Root.Position - targetCF.Position).Magnitude
+    if dist < 5 then return end
+    local tween = TweenService:Create(Root, TweenInfo.new(dist/250, Enum.EasingStyle.Linear), {CFrame = targetCF})
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- مزامنة الشخصية بعد الموت
+Player.CharacterAdded:Connect(function(char)
+    Character = char
+    Root = char:WaitForChild("HumanoidRootPart")
+    Humanoid = char:WaitForChild("Humanoid")
+    TargetBossInstance = nil
+end)
+
+-- // --- UI Integration ---
+
+MainTab:AddDropdown({
+    Name = "Select Boss",
+    Options = (function()
+        local t = {"None"}
+        for n, _ in pairs(BossData[CurrentSea]) do table.insert(t, n) end
+        return t
+    end)(),
+    Default = "None",
+    Callback = function(val)
+        SelectedBoss = val
+        TargetBossInstance = nil
+        print("Target: " .. val)
+    end
+})
+
+MainTab:AddToggle({
+    Name = "Tp To Boss",
+    Default = false,
+    Callback = function(state)
+        AutoFarmBoss = state
+    end
+})
+
+-- // --- Core Game Systems ---
+
+-- 1. Position Lock & Noclip (تثبيت اللاعب فوق الزعيم)
+RunService.Stepped:Connect(function()
+    if AutoFarmBoss and TargetBossInstance and TargetBossInstance:FindFirstChild("HumanoidRootPart") then
+        Root.CFrame = TargetBossInstance.HumanoidRootPart.CFrame * CFrame.new(0, 25, 0)
+        Root.Velocity = Vector3.zero
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+-- 2. Kill Aura (نظام الضرب السريع)
+task.spawn(function()
+    while true do
+        if AutoFarmBoss and TargetBossInstance and TargetBossInstance:FindFirstChild("Humanoid") and TargetBossInstance.Humanoid.Health > 0 then
+            pcall(function()
+                local Net = ReplicatedStorage.Modules.Net
+                Net["RE/RegisterAttack"]:FireServer(0)
+                Net["RE/RegisterHit"]:FireServer(TargetBossInstance.HumanoidRootPart, {}, nil, "")
+            end)
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- 3. Main Loop (نظام المهمات والبحث عن الزعماء)
+task.spawn(function()
+    while task.wait(0.5) do
+        if not AutoFarmBoss or SelectedBoss == "None" then 
+            TargetBossInstance = nil 
+            continue 
+        end
+        
+        pcall(function()
+            local Data = BossData[CurrentSea][SelectedBoss]
+            if not Data then return end
+            
+            -- البحث عن الزعيم في العالم
+            local boss = nil
+            for _, v in pairs(workspace.Enemies:GetChildren()) do
+                if v.Name == Data.BossName and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                    boss = v
+                    break
+                end
+            end
+            
+            if boss then
+                TargetBossInstance = boss
+                -- فحص هل يملك اللاعب المهمة الصحيحة؟
+                local questVisible = Player.PlayerGui.Main.Quest.Visible
+                if not questVisible then
+                    print("Taking Quest for " .. SelectedBoss)
+                    SmartTween(Data.QPos)
+                    CommF:InvokeServer("StartQuest", Data.QuestName, Data.QuestLevel)
+                end
+            else
+                -- إذا لم يظهر الزعيم بعد، اذهب لمكانه وانتظر
+                TargetBossInstance = nil
+                print("Waiting for " .. SelectedBoss .. " to spawn...")
+                SmartTween(Data.Pos)
+            end
+        end)
+    end
+end)
+
+-- Anti-Afk
+Player.Idled:Connect(function()
+    game:GetService("VirtualUser"):CaptureController()
+    game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+end)
+
+PlayerTab:AddSection("Player Info")
+
+--[[
+    Ai Edit Exploit Scripts AI - Player Status Module (Extended)
+    Optimized for Nebrolib | Performance: High | Refresh: 2s
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local LocalizationService = game:GetService("LocalizationService")
+
+-- // Variables
+local Player = Players.LocalPlayer
+local Data = Player:WaitForChild("Data")
+
+-- // UI Paragraphs
+local UserInfoPara = PlayerTab:AddParagraph({" 👤 User Stats", "Loading data..."})
+local ExtraInfoPara = PlayerTab:AddParagraph({"📊 Server & Progress", "Loading data..."}) -- الباراجراف الجديد
+local WorldStatusPara = PlayerTab:AddParagraph({"🌍 World Events", "Checking status..."})
+local TimeInfoPara = PlayerTab:AddParagraph({"🕒 Time & Region", "Calculating..."})
+
+-- // Data Helpers
+local MoonPhases = {
+    ["http://www.roblox.com/asset/?id=9709149431"] = "5/5 (Full Moon)",
+    ["http://www.roblox.com/asset/?id=9709149052"] = "4/5",
+    ["http://www.roblox.com/asset/?id=9709143733"] = "3/5",
+    ["http://www.roblox.com/asset/?id=9709150401"] = "2/5",
+    ["http://www.roblox.com/asset/?id=9709149680"] = "1/5"
+}
+
+-- جلب رقم العالم (Sea)
+local function GetSea()
+    local id = game.PlaceId
+    if id == 2753915549 then return "Sea 1"
+    elseif id == 4442272183 then return "Sea 2"
+    elseif id == 7449423635 then return "Sea 3"
+    else return "Unknown" end
+end
+
+-- حساب الوقت والتاريخ
+local function GetDateTimeInfo()
+    local date = os.date("*t")
+    local hour = date.hour % 24
+    local ampm = hour < 12 and "AM" or "PM"
+    local formattedTime = string.format("%02d:%02d:%02d %s", ((hour - 1) % 12) + 1, date.min, date.sec, ampm)
+    local formattedDate = string.format("%02d/%02d/%04d", date.day, date.month, date.year)
+    
+    local countryCode = "Unknown"
+    pcall(function()
+        countryCode = LocalizationService:GetCountryRegionForPlayerAsync(Player)
+    end)
+    
+    local ServerUptime = math.floor(workspace.DistributedGameTime)
+    local SH = math.floor(ServerUptime / 3600) % 24
+    local SM = math.floor(ServerUptime / 60) % 60
+    local SS = ServerUptime % 60
+    
+    return formattedDate .. " | " .. formattedTime .. " [" .. countryCode .. "]", 
+           string.format("%02d:%02d:%02d", SH, SM, SS)
+end
+
+-- // Main Refresh Loop (Runs every 2 seconds)
+task.spawn(function()
+    while true do
+        -- 1. Update User Basic Stats
+        pcall(function()
+            local char = Player.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            local health = hum and math.floor(hum.Health) or 0
+            local maxHealth = hum and math.floor(hum.MaxHealth) or 0
+            local energy = char and char:FindFirstChild("Energy") and char.Energy.Value or 0
+            local maxEnergy = char and char:FindFirstChild("Energy") and char.Energy.MaxValue or 0
+
+            UserInfoPara:SetDesc(
+                string.format("Display: %s\nLevel: %s\nBeli: $%s\nFragments: %s\nBounty: %s\nHealth: %s/%s\nStamina: %s/%s",
+                Player.DisplayName, Data.Level.Value, Data.Beli.Value, Data.Fragments.Value, 
+                Player.leaderstats["Bounty/Honor"].Value, health, maxHealth, energy, maxEnergy)
+            )
+        end)
+
+        -- 2. Update Extra Info & Progress (الجديد والمحسن)
+        pcall(function()
+            local currentExp = Data.Exp.Value
+            -- حساب تقريبي للخبرة المطلوبة للمستوى القادم في Blox Fruits
+            -- ملاحظة: هذه المعادلة تقريبية جداً
+            local nextLevelExp = (Data.Level.Value * 100) + 5000 
+            
+            local zone = "Unknown Area"
+            if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                -- محاولة جلب اسم المنطقة الحالية
+                for _, v in pairs(workspace._WorldOrigin.Locations:GetChildren()) do
+                    if (v.Position - Player.Character.HumanoidRootPart.Position).Magnitude < 500 then
+                        zone = v.Name
+                        break
+                    end
+                end
+            end
+
+            ExtraInfoPara:SetDesc(
+                string.format("Current Sea: %s\nCurrent Zone: %s\nRace: %s\nFruit: %s\nExp: %s\nJobId: %s",
+                GetSea(), zone, Data.Race.Value, Data.DevilFruit.Value, currentExp, game.JobId:sub(1,10).."...")
+            )
+        end)
+
+        -- 3. Update World Status
+        pcall(function()
+            local moonID = Lighting.Sky.MoonTextureId
+            local moonStatus = MoonPhases[moonID] or "0/5"
+            
+            local eliteBosses = {"Diablo", "Deandre", "Urban"}
+            local eliteStatus = "❌ Not Spawned"
+            for _, boss in pairs(eliteBosses) do
+                if ReplicatedStorage:FindFirstChild(boss) or workspace.Enemies:FindFirstChild(boss) then
+                    eliteStatus = "✅ Spawned"
+                    break
+                end
+            end
+
+            local kitsune = workspace.Map:FindFirstChild("KitsuneIsland") and "✅ Active" or "❌ Inactive"
+            local mirage = workspace._WorldOrigin.Locations:FindFirstChild("Mirage Island") and "✅ Spawned" or "❌ Not Found"
+            local frozen = workspace._WorldOrigin.Locations:FindFirstChild("Frozen Dimension") and "✅ Active" or "❌ Locked"
+
+            WorldStatusPara:SetDesc(
+                string.format("Moon: %s\nElite Hunter: %s\nKitsune Island: %s\nMirage Island: %s\nFrozen Dimension: %s",
+                moonStatus, eliteStatus, kitsune, mirage, frozen)
+            )
+        end)
+
+        -- 4. Update Time & Region
+        local osInfo, serverUptime = GetDateTimeInfo()
+        TimeInfoPara:SetDesc("OS: " .. osInfo .. "\nServer Uptime: " .. serverUptime)
+
+        task.wait(2) 
+    end
+end)
+
+StatsTab:AddSection("Stats")
+
+--[[
+    Ai Edit Exploit Scripts AI - Auto Stats Pro
+    Optimized for Nebrolib | Customizable Increments
+]]
+
+-- // Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+-- // Variables
+local AutoStats = {
+    ["Melee"] = false,
+    ["Defense"] = false,
+    ["Sword"] = false,
+    ["Gun"] = false,
+    ["Demon Fruit"] = false -- الاسم البرمجي الصحيح للفاكهة
+}
+
+local PointsPerCycle = 1 -- الافتراضي
+
+-- Dropdown اختيار عدد النقاط
+StatsTab:AddDropdown({
+    Name = "Points per Update",
+    Options = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"},
+    Default = "1",
+    Callback = function(val)
+        PointsPerCycle = tonumber(val)
+        print("Stats Increment set to: " .. val)
+    end
+})
+
+-- Melee Toggle
+StatsTab:AddToggle({
+    Name = "Auto Melee",
+    Default = false,
+    Callback = function(state)
+        AutoStats["Melee"] = state
+        print("Auto Melee: " .. tostring(state))
+    end
+})
+
+-- Defense Toggle
+StatsTab:AddToggle({
+    Name = "Auto Defense",
+    Default = false,
+    Callback = function(state)
+        AutoStats["Defense"] = state
+        print("Auto Defense: " .. tostring(state))
+    end
+})
+
+-- Sword Toggle
+StatsTab:AddToggle({
+    Name = "Auto Sword",
+    Default = false,
+    Callback = function(state)
+        AutoStats["Sword"] = state
+        print("Auto Sword: " .. tostring(state))
+    end
+})
+
+-- Gun Toggle
+StatsTab:AddToggle({
+    Name = "Auto Gun",
+    Default = false,
+    Callback = function(state)
+        AutoStats["Gun"] = state
+        print("Auto Gun: " .. tostring(state))
+    end
+})
+
+-- Blox Fruit Toggle
+StatsTab:AddToggle({
+    Name = "Auto Blox Fruit",
+    Default = false,
+    Callback = function(state)
+        AutoStats["Demon Fruit"] = state
+        print("Auto Blox Fruit: " .. tostring(state))
+    end
+})
+
+-- // --- Main Logic Loop ---
+
+task.spawn(function()
+    while true do
+        for statName, enabled in pairs(AutoStats) do
+            if enabled then
+                pcall(function()
+                    -- استدعاء السيرفر لإضافة عدد النقاط المختار
+                    CommF:InvokeServer("AddPoint", statName, PointsPerCycle)
+                end)
+            end
+        end
+        task.wait(0.3) -- سرعة تحديث النقاط (متوازن)
+    end
+end)
+
+print("Stats Module Loaded Successfully.")
+
+SeaTab:AddSection("Mirage Island")
+
+--[[
+    Ai Edit Exploit Scripts AI - Mirage & Kitsune Pro
+    Optimized for Nebrolib | Advanced ESP & Teleport
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- // Variables
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Root = Character:WaitForChild("HumanoidRootPart")
+
+-- // State Management
+local Config = {
+    MirageESP = false,
+    GearESP = false,
+    FruitDealerESP = false,
+    KitsuneESP = false,
+    TeleportMirage = false,
+    TeleportGear = false,
+    TeleportFruitDealer = false,
+    TeleportKitsune = false,
+    AutoCollectAzure = false
+}
+
+-- // --- Utility Functions ---
+
+-- نظام الحركة السلس (Tween)
+local CurrentTween = nil
+local function MoveTo(targetCF)
+    if not targetCF then return end
+    local dist = (Root.Position - targetCF.Position).Magnitude
+    if dist < 10 then return end
+    
+    if CurrentTween then CurrentTween:Cancel() end
+    
+    CurrentTween = TweenService:Create(Root, TweenInfo.new(dist / 300, Enum.EasingStyle.Linear), {CFrame = targetCF})
+    CurrentTween:Play()
+end
+
+-- إنشاء الـ ESP الاحترافي
+local function ApplyESP(parent, name, color, id)
+    if not parent:FindFirstChild(id) then
+        local bgui = Instance.new("BillboardGui", parent)
+        bgui.Name = id
+        bgui.AlwaysOnTop = true
+        bgui.Size = UDim2.new(0, 200, 0, 50)
+        bgui.StudsOffset = Vector3.new(0, 3, 0)
+        
+        local lbl = Instance.new("TextLabel", bgui)
+        lbl.BackgroundTransparency = 1
+        lbl.Size = UDim2.new(1, 0, 1, 0)
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextColor3 = color
+        lbl.TextSize = 14
+        lbl.TextStrokeTransparency = 0.5
+    end
+    
+    local dist = math.floor((Root.Position - parent.Position).Magnitude)
+    parent[id].TextLabel.Text = name .. " [" .. dist .. "m]"
+end
+
+SeaTab:AddToggle({
+    Name = "Mirage Island ESP",
+    Default = false,
+    Callback = function(v) Config.MirageESP = v end
+})
+
+SeaTab:AddToggle({
+    Name = "Gear ESP",
+    Default = false,
+    Callback = function(v) Config.GearESP = v end
+})
+
+SeaTab:AddToggle({
+    Name = "Advanced Fruit Dealer ESP",
+    Default = false,
+    Callback = function(v) Config.FruitDealerESP = v end
+})
+
+SeaTab:AddToggle({
+    Name = "Teleport to Mirage",
+    Default = false,
+    Callback = function(v) 
+        Config.TeleportMirage = v 
+        if not v and CurrentTween then CurrentTween:Cancel() end
+    end
+})
+
+SeaTab:AddSection("Kitsune Island")
+
+SeaTab:AddToggle({
+    Name = "Kitsune Island ESP",
+    Default = false,
+    Callback = function(v) Config.KitsuneESP = v end
+})
+
+SeaTab:AddToggle({
+    Name = "Teleport to Shrine (Kitsune)",
+    Default = false,
+    Callback = function(v) Config.TeleportKitsune = v end
+})
+
+SeaTab:AddToggle({
+    Name = "Auto Collect Azure",
+    Default = false,
+    Callback = function(v) Config.AutoCollectAzure = v end
+})
+
+-- // --- Main Core Loops ---
+
+-- 1. Noclip Loop (يتم تفعيله عند التنقل)
+RunService.Stepped:Connect(function()
+    if Config.TeleportMirage or Config.TeleportKitsune or Config.AutoCollectAzure then
+        if Character then
+            for _, v in pairs(Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end
+    end
+end)
+
+-- 2. ESP & Logic Refresh Loop
+task.spawn(function()
+    while task.wait(0.5) do
+        -- Mirage ESP Logic
+        if Config.MirageESP then
+            for _, v in pairs(Workspace._WorldOrigin.Locations:GetChildren()) do
+                if v.Name == "Mirage Island" then
+                    ApplyESP(v, "Mirage Island", Color3.fromRGB(0, 255, 100), "MirageESP_GUI")
+                end
+            end
+        end
+
+        -- Gear ESP Logic
+        if Config.GearESP and Workspace.Map:FindFirstChild("MysticIsland") then
+            for _, v in pairs(Workspace.Map.MysticIsland:GetChildren()) do
+                if v:IsA("MeshPart") and v.Material == Enum.Material.Neon then
+                    ApplyESP(v, "Gear", Color3.fromRGB(0, 255, 255), "GearESP_GUI")
+                end
+            end
+        end
+
+        -- Kitsune ESP Logic
+        if Config.KitsuneESP then
+            for _, v in pairs(Workspace._WorldOrigin.Locations:GetChildren()) do
+                if v.Name == "Kitsune Island" then
+                    ApplyESP(v, "Kitsune Island", Color3.fromRGB(255, 100, 255), "KitsuneESP_GUI")
+                end
+            end
+        end
+    end
+end)
+
+-- 3. Teleport & Auto Farm Logic
+task.spawn(function()
+    while task.wait() do
+        -- Teleport to Mirage
+        if Config.TeleportMirage then
+            local mirage = Workspace.Map:FindFirstChild("MysticIsland")
+            if mirage and mirage:FindFirstChild("Center") then
+                MoveTo(mirage.Center.CFrame)
+            end
+        end
+
+        -- Teleport to Kitsune
+        if Config.TeleportKitsune then
+            local kitsune = Workspace.Map:FindFirstChild("KitsuneIsland")
+            if kitsune and kitsune:FindFirstChild("ShrineActive") then
+                for _, v in pairs(kitsune.ShrineActive:GetDescendants()) do
+                    if v.Name:find("NeonShrinePart") then
+                        MoveTo(v.CFrame)
+                    end
+                end
+            end
+        end
+
+        -- Auto Collect Azure Ember
+        if Config.AutoCollectAzure then
+            for _, v in pairs(Workspace:GetChildren()) do
+                if v.Name == "AttachedAzureEmber" and v:FindFirstChild("Part") then
+                    MoveTo(v.Part.CFrame)
+                    break
+                end
+            end
+        end
+    end
+end)
+
+-- Character Re-Sync
+Player.CharacterAdded:Connect(function(char)
+    Character = char
+    Root = char:WaitForChild("HumanoidRootPart")
+end)
+
+ShopTab:AddSection("Shop")
+
+--========================
+-- SERVICES
+--========================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+--========================
+-- WORLD CHECK
+--========================
+local World = 1
+
+if game.PlaceId == 2753915549 then
+    World = 1
+elseif game.PlaceId == 4442272183 then
+    World = 2
+elseif game.PlaceId == 7449423635 then
+    World = 3
+end
+
+--========================
+-- SWORDS
+--========================
+local SwordsList = {}
+
+if World == 1 then
+    SwordsList = {
+        "Cutlass","Katana","Dual Katana","Iron Mace","Shark Saw",
+        "Triple Katana","Trident","Pole (1st Form)","Bisento",
+        "Dual-Headed Blade","Pipe","Warden's Sword","Soul Cane"
+    }
+elseif World == 2 then
+    SwordsList = {
+        "Pole (2nd Form)","Gravity Cane","Dragon Trident","Longsword",
+        "Rengoku","Midnight Blade","Koko","Saddi","Shisui","Wando",
+        "True Triple Katana"
+    }
+elseif World == 3 then
+    SwordsList = {
+        "Tushita","Yama","Cursed Dual Katana","Hallow Scythe",
+        "Shark Anchor","Fox Lamp","Dark Dagger","Dragonheart",
+        "Oroshi","Saishi","Shizu","Spikey Trident"
+    }
+end
+
+--========================
+-- COMBAT
+--========================
+local CombatList = {}
+
+if World == 1 then
+    CombatList = {"Combat","Dark Step","Electric","Water Kung Fu"}
+elseif World == 2 then
+    CombatList = {"Dragon Breath","Superhuman","Death Step","Sharkman Karate"}
+elseif World == 3 then
+    CombatList = {"Electric Claw","Dragon Talon","Godhuman","Sanguine Art"}
+end
+
+--========================
+-- RACE
+--========================
+local RaceList = {"Cyborg","Ghoul"}
+
+--========================
+-- VARIABLES
+--========================
+local SelectedSword = SwordsList[1]
+local SelectedCombat = CombatList[1]
+local SelectedRace = RaceList[1]
+
+local AutoLegendary = false
+
+--========================
+-- FUNCTIONS
+--========================
+local function BuyItem(name)
+    pcall(function()
+        CommF:InvokeServer("BuyItem", name)
+    end)
+end
+
+local function BuyLegendary(name)
+    pcall(function()
+        CommF:InvokeServer("LegendarySwordDealer", "Buy", name)
+    end)
+end
+
+--========================
+-- AUTO LEGENDARY SWORDS
+--========================
+ShopTab:AddToggle({
+    "Auto Buy Legendary Swords",
+    false,
+    function(state)
+        AutoLegendary = state
+
+        if state then
+            task.spawn(function()
+                while AutoLegendary do
+                    for _, sword in ipairs({"Shisui","Saddi","Wando"}) do
+                        if not AutoLegendary then break end
+                        BuyLegendary(sword)
+                        task.wait(1)
+                    end
+                    task.wait(5)
+                end
+            end)
+        end
+    end
+})
+
+--========================
+-- SWORD DROPDOWN + BUY
+--========================
+ShopTab:AddDropdown({
+    "Select Sword",
+    SwordsList,
+    {SwordsList[1]},
+    function(selected)
+        SelectedSword = selected[1]
+    end
+})
+
+ShopTab:AddButton({
+    "Buy Sword",
+    "buy selected sword",
+    function()
+        BuyItem(SelectedSword)
+    end
+})
+
+--========================
+-- COMBAT
+--========================
+ShopTab:AddDropdown({
+    "Select Combat",
+    CombatList,
+    {CombatList[1]},
+    function(selected)
+        SelectedCombat = selected[1]
+    end
+})
+
+ShopTab:AddButton({
+    "Buy Combat",
+    "buy selected fighting style",
+    function()
+        BuyItem(SelectedCombat)
+    end
+})
+
+--========================
+-- RACE
+--========================
+ShopTab:AddDropdown({
+    "Select Race",
+    RaceList,
+    {RaceList[1]},
+    function(selected)
+        SelectedRace = selected[1]
+    end
+})
+
+ShopTab:AddButton({
+    "Buy Race",
+    "buy selected race",
+    function()
+        BuyItem(SelectedRace)
+    end
+})
+
+--========================
+-- REFUND STATS
+--========================
+ShopTab:AddButton({
+    "Refund Stats",
+    "reset your stats",
+    function()
+        CommF:InvokeServer("BlackbeardReward","Refund","1")
+        CommF:InvokeServer("BlackbeardReward","Refund","2")
+    end
+})
+
+--========================
+-- REROLL RACE
+--========================
+ShopTab:AddButton({
+    "Reroll Race",
+    "buy random race",
+    function()
+        CommF:InvokeServer("BlackbeardReward","Reroll","1")
+        CommF:InvokeServer("BlackbeardReward","Reroll","2")
+    end
+})
+
+--[[
+    Ai Edit Exploit Scripts AI - Ultimate Effects & Lag Fixer
+    Optimized for Nebrolib | Professional FPS Booster
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- // --- UI Section ---
+
+EffectsTab:AddSection("Effects")
+
+-- 1. تعطيل التنبيهات (Disable Notifications)
+local DisableNotifs = false
+EffectsTab:AddToggle({
+    Name = "Disable Notifications",
+    Default = false,
+    Callback = function(state)
+        DisableNotifs = state
+        pcall(function()
+            local NotifGui = LocalPlayer.PlayerGui:FindFirstChild("Notifications")
+            if NotifGui then
+                NotifGui.Enabled = not state
+            end
+        end)
+        print("Notifications Status:", state and "Hidden" or "Visible")
+    end
+})
+
+-- 2. تعطيل أرقام الضرر (Disable Damage Counter)
+local DisableDamage = false
+EffectsTab:AddToggle({
+    Name = "Disable Damage Counter",
+    Default = false,
+    Callback = function(state)
+        DisableDamage = state
+        pcall(function()
+            -- إخفاء واجهة عداد الضرر في الـ PlayerGui
+            local DamageGui = LocalPlayer.PlayerGui:FindFirstChild("DamageCounter")
+            if DamageGui then
+                DamageGui.Enabled = not state
+            end
+        end)
+        print("Damage Counter Status:", state and "Disabled" or "Enabled")
+    end
+})
+
+local EffectCleanerEnabled = false
+EffectsTab:AddToggle({
+    Name = "Disable Effects & Sounds",
+    Default = false,
+    Callback = function(state)
+        EffectCleanerEnabled = state
+        print("FPS Booster:", state and "Activated" or "Deactivated")
+    end
+})
+
+task.spawn(function()
+    local TrashNames = {
+        "CurvedRing", "SlashHit", "SwordSlash", "Sounds", "Impact", 
+        "Ring", "Flash", "Explosion", "Circle", "Part", "Light"
+    }
+
+    while true do
+        if EffectCleanerEnabled then
+            pcall(function()
+                local worldOrigin = Workspace:FindFirstChild("_WorldOrigin")
+                if worldOrigin then
+                    for _, v in pairs(worldOrigin:GetChildren()) do
+                        for _, trashName in pairs(TrashNames) do
+                            if v.Name == trashName then
+                                v:Destroy()
+                            end
+                        end
+                    end
+                end
+
+                for _, v in pairs(Workspace:GetChildren()) do
+                    if v:IsA("Sound") then
+                        v:Stop()
+                        v:Destroy()
+                    end
+                end
+            end)
+        end
+        task.wait(0.5)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if DisableDamage then
+            pcall(function()
+                for _, v in pairs(LocalPlayer.PlayerGui:GetChildren()) do
+                    if v.Name == "DamageCounter" then
+                        v.Enabled = false
+                    end
+                end
+            end)
+        end
+        task.wait(1)
+    end
+end)
+
+local function OptimizeGame()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    Workspace.LevelOfDetail = Enum.ModelLevelOfDetail.Low
+    
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") and v.Transparency ~= 1 then
+            v.CastShadow = false
+        end
+    end
+end
+
+pcall(OptimizeGame)
+
+print("Effects & Optimization Module Loaded.")
+
+--[[
+    Ai Edit Exploit Scripts AI - Team Selection Module
+    Optimized for Nebrolib | Professional Grade
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- // Variables
+local LocalPlayer = Players.LocalPlayer
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+-- // --- UI Section ---
+
+TeamTab:AddSection("Team")
+
+-- 1. زر الانضمام للقراصنة (Pirates)
+TeamTab:AddButton({
+    Name = "Join Pirates",
+    Callback = function()
+        pcall(function()
+            -- إرسال طلب السيرفر لتغيير الفريق
+            CommF:InvokeServer("SetTeam", "Pirates")
+            
+            -- إخفاء واجهة اختيار الفريق الأصلية إذا كانت مفتوحة
+            if LocalPlayer.PlayerGui:FindFirstChild("Main") and LocalPlayer.PlayerGui.Main:FindFirstChild("ChooseTeam") then
+                LocalPlayer.PlayerGui.Main.ChooseTeam.Visible = false
+            end
+        end)
+        print("Team Status: Joined Pirates")
+    end
+})
+
+-- 2. زر الانضمام للبحرية (Marines)
+TeamTab:AddButton({
+    Name = "Join Marines",
+    Callback = function()
+        pcall(function()
+            -- إرسال طلب السيرفر لتغيير الفريق
+            CommF:InvokeServer("SetTeam", "Marines")
+            
+            -- إخفاء واجهة اختيار الفريق الأصلية
+            if LocalPlayer.PlayerGui:FindFirstChild("Main") and LocalPlayer.PlayerGui.Main:FindFirstChild("ChooseTeam") then
+                LocalPlayer.PlayerGui.Main.ChooseTeam.Visible = false
+            end
+        end)
+        print("Team Status: Joined Marines")
+    end
+})
+
+print("Team Selection Module Loaded Successfully.")
+
+--[[
+    Ai Edit Exploit Scripts AI - Ultimate Auto Raid (Island Transition Fixed)
+    Optimized for Nebrolib | World-Specific Automation
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- // Variables
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Root = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+-- // Configuration
+local Config = {
+    AutoRaid = false,
+    AutoStart = false,
+    SelectedChip = "Flame",
+    CurrentTween = nil,
+    Speed = 300
+}
+
+-- // --- FUNCTIONS ---
+
+-- جلب معرف الجلسة لضمان القتل السريع
+local function GetSessionID()
+    local success, result = pcall(function()
+        local SendHitsToServer = getrenv()._G.SendHitsToServer
+        local CombatThread = getupvalues(SendHitsToServer)[1]
+        return tostring(Player.UserId):sub(2,4)..tostring(CombatThread):sub(11,15)
+    end)
+    return success and result or "INVALID"
+end
+
+-- نظام التنقل السلس (Smart Tween)
+local function SmartTween(targetCF)
+    local dist = (Root.Position - targetCF.Position).Magnitude
+    if dist < 10 then return end
+    
+    if Config.CurrentTween then Config.CurrentTween:Cancel() end
+    
+    Config.CurrentTween = TweenService:Create(Root, TweenInfo.new(dist / Config.Speed, Enum.EasingStyle.Linear), {CFrame = targetCF})
+    Config.CurrentTween:Play()
+    
+    -- انتظار الوصول أو إلغاء التوغل
+    repeat 
+        task.wait() 
+        Root.Velocity = Vector3.zero 
+    until (Root.Position - targetCF.Position).Magnitude < 15 or not Config.AutoRaid
+    
+    if Config.CurrentTween then Config.CurrentTween:Cancel() end
+end
+
+-- تجهيز أسلوب القتال تلقائياً
+local function EquipCombat()
+    local CombatStyles = {"Godhuman", "Sanguine Art", "Death Step", "Electric Claw", "Dragon Talon", "Superhuman", "Sharkman Karate", "Electric", "Black Leg", "Fishman Karate", "Combat"}
+    for _, style in ipairs(CombatStyles) do
+        local tool = Player.Backpack:FindFirstChild(style) or Character:FindFirstChild(style)
+        if tool then
+            if tool.Parent ~= Character then Humanoid:EquipTool(tool) end
+            return
+        end
+    end
+end
+
+-- نظام Kill Aura (ضرب فائق السرعة)
+local function KillAura(target)
+    if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+    pcall(function()
+        local Net = ReplicatedStorage.Modules.Net
+        Net["RE/RegisterAttack"]:FireServer(0)
+        Net["RE/RegisterHit"]:FireServer(target.HumanoidRootPart, {}, nil, GetSessionID())
+    end)
+end
+
+-- // --- UI Integration (Nebrolib) ---
+
+RaidTab:AddSection("Raid")
+
+RaidTab:AddToggle({
+    Name = "Auto Farm Raid",
+    Default = false,
+    Callback = function(v) Config.AutoRaid = v end
+})
+
+RaidTab:AddToggle({
+    Name = "Auto Start Raid",
+    Default = false,
+    Callback = function(v) Config.AutoStart = v end
+})
+
+RaidTab:AddDropdown({
+    Name = "Select Chip",
+    Options = {"Flame","Ice","Quake","Light","Dark","Spider","Rumble","Magma","Buddha","Sand"},
+    Default = "Flame",
+    Callback = function(v) Config.SelectedChip = v end
+})
+
+RaidTab:AddButton({
+    Name = "Buy Chip",
+    Callback = function()
+        pcall(function()
+            CommF:InvokeServer("RaidsNpc","Select", Config.SelectedChip)
+            task.wait(0.2)
+            CommF:InvokeServer("RaidsNpc","Start")
+        end)
+    end
+})
+
+-- // --- CORE LOGIC ---
+
+-- 1. نظام الـ Noclip المستمر أثناء الـ Raid
+RunService.Stepped:Connect(function()
+    if Config.AutoRaid then
+        pcall(function()
+            for _, v in pairs(Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end)
+    end
+end)
+
+-- 2. حلقة بدء الغارة تلقائياً (Auto Start)
+task.spawn(function()
+    while task.wait(5) do
+        if Config.AutoStart then
+            local inRaid = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("RaidMap")
+            if not inRaid then
+                pcall(function()
+                    CommF:InvokeServer("RaidsNpc","Select", Config.SelectedChip)
+                    task.wait(0.5)
+                    CommF:InvokeServer("RaidsNpc","Start")
+                end)
+            end
+        end
+    end
+end)
+
+-- 3. الحلقة الأساسية (Auto Farm & Island Transition)
+task.spawn(function()
+    while task.wait() do
+        if Config.AutoRaid then
+            pcall(function()
+                local enemies = workspace.Enemies:GetChildren()
+                local targetMob = nil
+                
+                -- البحث عن وحوش الغارة
+                for _, e in pairs(enemies) do
+                    if e:FindFirstChild("Humanoid") and e.Humanoid.Health > 0 then
+                        targetMob = e
+                        break
+                    end
+                end
+                
+                if targetMob then
+                    -- إذا وجد وحوش: أقتلهم
+                    EquipCombat()
+                    Root.CFrame = targetMob.HumanoidRootPart.CFrame * CFrame.new(0, 25, 0)
+                    Root.Velocity = Vector3.zero
+                    KillAura(targetMob)
+                else
+                    -- إذا انتهى الوحوش: ابحث عن أعلى جزيرة تم فتحها وانتقل إليها
+                    local raidMap = workspace.Map:FindFirstChild("RaidMap")
+                    if raidMap then
+                        local latestIsland = nil
+                        for i = 1, 5 do
+                            local island = raidMap:FindFirstChild("Island "..tostring(i))
+                            if island then
+                                latestIsland = island -- سيأخذ أعلى رقم جزيرة موجود
+                            end
+                        end
+                        
+                        if latestIsland then
+                            -- التوجه لمنتصف أعلى جزيرة متاحة
+                            SmartTween(latestIsland:GetModelCFrame() * CFrame.new(0, 60, 0))
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- // --- Character Sync ---
+Player.CharacterAdded:Connect(function(char)
+    Character = char
+    Root = char:WaitForChild("HumanoidRootPart")
+    Humanoid = char:WaitForChild("Humanoid")
+end)
+
+print("Professional Raid Module Loaded.")
+
+SettingsTab:AddSection("Settings")
+
+--[[
+    Ai Edit Exploit Scripts AI - Ultimate Settings Module
+    Optimized for Nebrolib | Performance & Security Focused
+]]
+
+-- // Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+
+-- // Variables
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Root = Character:WaitForChild("HumanoidRootPart")
+local CommF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+-- // --- 1. ANTI AFK ---
+local AntiAFK = false
+task.spawn(function()
+    LocalPlayer.Idled:Connect(function()
+        if AntiAFK then
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+            print("Anti-AFK: Prevented Disconnection")
+        end
+    end)
+end)
+
+SettingsTab:AddToggle({
+    Name = "Anti AFK",
+    Default = false,
+    Callback = function(state)
+        AntiAFK = state
+    end
+})
+
+-- // --- 2. FAST MODE (FPS BOOST) ---
+local FastMode = false
+local OriginalSettings = {}
+
+local function ToggleFastMode(state)
+    if state then
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("BasePart") and v.Transparency ~= 1 then
+                OriginalSettings[v] = {Material = v.Material, Shadow = v.CastShadow}
+                v.Material = Enum.Material.Plastic
+                v.CastShadow = false
+            elseif v:IsA("Decal") or v:IsA("Texture") then
+                OriginalSettings[v] = v.Transparency
+                v.Transparency = 1
+            end
+        end
+        Lighting.GlobalShadows = false
+    else
+        for obj, data in pairs(OriginalSettings) do
+            if obj and obj.Parent then
+                if obj:IsA("BasePart") then
+                    obj.Material = data.Material
+                    obj.CastShadow = data.Shadow
+                else
+                    obj.Transparency = data
+                end
+            end
+        end
+        Lighting.GlobalShadows = true
+        OriginalSettings = {}
+    end
+end
+
+SettingsTab:AddToggle({
+    Name = "Fast Mode",
+    Default = false,
+    Callback = function(state)
+        FastMode = state
+        ToggleFastMode(state)
+    end
+})
+
+-- // --- 3. AUTO FARM CHEST ---
+local AutoChest = false
+local ChestSpeed = 350
+
+local function SmartTween(targetPos)
+    local dist = (Root.Position - targetPos).Magnitude
+    if dist < 8 then return end
+    
+    local tween = TweenService:Create(Root, TweenInfo.new(dist / ChestSpeed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
+    tween:Play()
+    
+    -- نظام Noclip أثناء الحركة
+    local noclip = RunService.Stepped:Connect(function()
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end)
+    
+    tween.Completed:Wait()
+    noclip:Disconnect()
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if AutoChest then
+            pcall(function()
+                local Chests = Workspace:FindFirstChild("ChestModels") or Workspace:FindFirstChild("Chests")
+                if Chests then
+                    local target = nil
+                    local minDist = math.huge
+                    
+                    for _, v in pairs(Chests:GetChildren()) do
+                        if v:IsA("Model") and (v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart")) then
+                            local part = v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart")
+                            local d = (Root.Position - part.Position).Magnitude
+                            if d < minDist then
+                                minDist = d
+                                target = part
+                            end
+                        end
+                    end
+                    
+                    if target then SmartTween(target.Position) end
+                end
+            end)
+        end
+    end
+end)
+
+SettingsTab:AddToggle({
+    Name = "Auto Farm Chests",
+    Default = false,
+    Callback = function(state)
+        AutoChest = state
+    end
+})
+
+-- // --- 4. WALK ON WATER ---
+local WaterPlatform = nil
+SettingsTab:AddToggle({
+    Name = "Walk On Water",
+    Default = false,
+    Callback = function(state)
+        if state then
+            WaterPlatform = Instance.new("Part")
+            WaterPlatform.Name = "WaterWalk_Platform"
+            WaterPlatform.Size = Vector3.new(100, 1, 100)
+            WaterPlatform.Transparency = 1
+            WaterPlatform.Anchored = true
+            WaterPlatform.Parent = Workspace
+            
+            task.spawn(function()
+                while WaterPlatform do
+                    if Character and Root then
+                        WaterPlatform.Position = Vector3.new(Root.Position.X, 2, Root.Position.Z) -- ارتفاع مناسب للماء في اللعبة
+                    end
+                    RunService.Heartbeat:Wait()
+                end
+            end)
+        else
+            if WaterPlatform then WaterPlatform:Destroy(); WaterPlatform = nil end
+        end
+    end
+})
+
+-- // --- 5. INFINITE JUMP ---
+local InfJump = false
+UserInputService.JumpRequest:Connect(function()
+    if InfJump then
+        Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+SettingsTab:AddToggle({
+    Name = "Infinite Jump",
+    Default = false,
+    Callback = function(state)
+        InfJump = state
+    end
+})
+
+-- // --- 6. NOCLIP ---
+local NoClip = false
+RunService.Stepped:Connect(function()
+    if NoClip and Character then
+        for _, v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+SettingsTab:AddToggle({
+    Name = "Noclip",
+    Default = false,
+    Callback = function(state)
+        NoClip = state
+    end
+})
+
+-- // --- 7. UTILITIES (CODES, REJOIN, SERVER HOP) ---
+
+SettingsTab:AddButton({
+    Name = "Redeem All Codes",
+    Callback = function()
+        local Codes = {"Sub2Fer999", "Enyu_is_Pro", "Magicbus", "JCWK", "Starcodeheo", "Bluxxy", "THEGREATACE", "SUB2GAMERROBOT_EXP1", "KITTGAMING"}
+        for _, code in pairs(Codes) do
+            CommF:InvokeServer("Redeem", code)
+            task.wait(0.2)
+        end
+        print("Codes: Redemption Process Finished.")
+    end
+})
+
+SettingsTab:AddButton({
+    Name = "Rejoin Server",
+    Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+SettingsTab:AddButton({
+    Name = "Server Hop",
+    Callback = function()
+        local function GetServer()
+            local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?limit=100"))
+            for _, s in pairs(Servers.data) do
+                if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    return s.id
+                end
+            end
+        end
+        local serverId = GetServer()
+        if serverId then TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId) end
+    end
+})
+
+-- // --- Character Sync ---
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+    Root = char:WaitForChild("HumanoidRootPart")
+    Humanoid = char:WaitForChild("Humanoid")
+end)
+
+print("Settings Module Loaded Successfully.")
