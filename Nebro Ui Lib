@@ -1652,16 +1652,16 @@ function nebrolib:MakeWindow(Configs)
 			TextTransparency = MiniText == "" and 1 or 0
 		})
 		
-		local ImageLabel = Create("ImageLabel", Button, {
-			Size = UDim2.new(0, math.max(14, MiniSize - 22), 0, math.max(14, MiniSize - 22)),
-			Position = UDim2.new(0.5, 0, 1, -4),
-			AnchorPoint = Vector2.new(0.5, 1),
-			BackgroundTransparency = 1,
-			Image = MiniImage,
-			ImageColor3 = Theme["Color Theme"],
-			ScaleType = Enum.ScaleType.Fit,
-			ImageTransparency = MiniImage == "" and 1 or 0
-		})
+			local ImageLabel = Create("ImageLabel", Button, {
+				Size = UDim2.fromOffset(MiniSize, MiniSize),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+				Image = MiniImage,
+				ImageColor3 = Theme["Color Theme"],
+				ScaleType = Enum.ScaleType.Fit,
+				ImageTransparency = MiniImage == "" and 1 or 0
+			})
 		
 		local function ToggleMain()
 			Window:Minimize()
