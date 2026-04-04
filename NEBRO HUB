@@ -41,7 +41,7 @@ local ShopTab = window:MakeTab({
 
 local EffectsTab = window:MakeTab({
     Title = "Effects",
-    Icon = "witch"
+    Icon = "stick"
 })
 
 local TeamTab = window:MakeTab({
@@ -51,7 +51,7 @@ local TeamTab = window:MakeTab({
 
 local RaidTab = window:MakeTab({
     Title = "Raid",
-    Icon = "kill"
+    Icon = "beer"
 })
 
 local SettingsTab = window:MakeTab({
